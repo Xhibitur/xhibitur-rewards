@@ -713,8 +713,33 @@ function PricingPage() {
   const w=useW(); const mob=w<640;
   const [ann,setAnn] = useState(false);
   const [legalModal,setLegalModal] = useState(null);
+  const [loading,setLoading] = useState(false);
+  const [err,setErr] = useState("");
   const price = ann ? 41 : 49;
   const px = mob?18:28;
+
+  const startCheckout = async () => {
+    if (!user) { nav("signup"); return; }
+    if (user.plan === "pro") { nav("dashboard"); return; }
+    setLoading(true); setErr("");
+    try {
+      const res = await fetch("/.netlify/functions/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId: ann
+            ? (process.env.STRIPE_PRICE_YEARLY  || "price_YEARLY_ID_HERE")
+            : (process.env.STRIPE_PRICE_MONTHLY || "price_MONTHLY_ID_HERE"),
+          email: user.email,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { setErr("Something went wrong. Please try again or email info@xhibitur.com"); }
+    } catch(e) {
+      setErr("Something went wrong. Please try again or email info@xhibitur.com");
+    } finally { setLoading(false); }
+  };
   return (
     <div style={{ minHeight:"100vh",background:C.bg }}>
       <TopNav/>
@@ -752,8 +777,9 @@ function PricingPage() {
               ? <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>Billed as $490/year</div>
               : <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>or $490/year — 2 months free</div>
             }
-            <button onClick={()=>{ if(user) nav("dashboard"); else nav("signup"); }} style={{ ...btnP(C.vi,mob),fontSize:mob?15:17,padding:mob?"14px 28px":"16px 52px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:400 }}>
-              Start 14-day free trial
+            {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 14px",color:C.err,fontSize:13,marginBottom:16,maxWidth:400,margin:"0 auto 16px" }}>{err}</div>}
+            <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:mob?15:17,padding:mob?"14px 28px":"16px 52px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:400,opacity:loading?.7:1 }}>
+              {loading ? "Redirecting to checkout…" : user?.plan==="pro" ? "Go to dashboard →" : "Start 14-day free trial"}
             </button>
             <div style={{ marginTop:14,fontSize:13,color:C.t4 }}>No credit card required · Cancel any time</div>
           </div>
@@ -793,8 +819,8 @@ function PricingPage() {
             <div style={{ fontSize:14,color:C.t4,marginBottom:24,maxWidth:500,margin:"0 auto 24px",lineHeight:1.65 }}>
               The win-back rule generates more than $49 in recovered revenue for most businesses within their first 30 days.
             </div>
-            <button onClick={()=>{ if(user) nav("dashboard"); else nav("signup"); }} style={{ ...btnP(C.vi,mob),fontSize:15,padding:"13px 32px",maxWidth:340 }}>
-              {user?"Go to dashboard →":"Start free trial — no card needed"}
+            <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:15,padding:"13px 32px",maxWidth:340,opacity:loading?.7:1 }}>
+              {loading ? "Redirecting…" : user?"Start free trial — no card needed":"Start free trial — no card needed"}
             </button>
           </div>
         </div>
@@ -1265,7 +1291,7 @@ function AccountPage() {
                 <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>Pro Plan</span>
                 <Tag color={C.vi}>{isTrial?"Free Trial":"$49/mo"}</Tag>
               </div>
-              {isTrial && <button onClick={()=>nav("pricing")} style={{ ...btnP(),padding:"8px 16px",fontSize:13 }}>Activate plan</button>}
+              {isTrial && <button onClick={()=>nav("pricing")} style={{ ...btnP(),padding:"8px 16px",fontSize:13 }}>Activate plan — $49/mo</button>}
             </div>
             <div style={{ fontSize:12,color:C.t4,lineHeight:1.6 }}>
               {isTrial
