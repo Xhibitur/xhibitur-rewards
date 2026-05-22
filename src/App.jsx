@@ -728,8 +728,8 @@ function PricingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: ann
-            ? (process.env.STRIPE_PRICE_YEARLY  || "price_YEARLY_ID_HERE")
-            : (process.env.STRIPE_PRICE_MONTHLY || "price_MONTHLY_ID_HERE"),
+            ? "price_1TSjbIId1xxQI6ctdhI42SiU"
+            : "price_1TSjbIId1xxQI6cthyjPZG9f",
           email: user.email,
         }),
       });
