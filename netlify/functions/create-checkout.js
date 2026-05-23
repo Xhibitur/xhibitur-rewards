@@ -13,6 +13,10 @@ exports.handler = async (event) => {
   try {
     const { priceId, email } = JSON.parse(event.body);
 
+    console.log("Key prefix:", process.env.STRIPE_SECRET_KEY?.slice(0, 8));
+    console.log("Price ID:", priceId);
+    console.log("Email:", email);
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -29,6 +33,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
+    console.log("Stripe error:", err.message);
     return {
       statusCode: 500,
       headers,
