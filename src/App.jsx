@@ -447,7 +447,7 @@ function Signup() {
   const row = { display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:10 };
 
   return (
-    <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49/month after.">
+    <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49.99/month after.">
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
         {[{ lb:"Business name",val:nm,set:setNm,type:"text",ph:"Acme Coffee Co." },{ lb:"Email",val:em,set:setEm,type:"email",ph:"you@business.com" },{ lb:"Password",val:pw,set:setPw,type:"password",ph:"8+ characters" }].map(f=>(
           <div key={f.lb}><label style={lbl}>{f.lb}</label><input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
@@ -520,7 +520,7 @@ function Landing() {
             <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 24px":"14px 32px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start 14-day free trial</button>
             <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:mob?15:16,padding:mob?"14px 20px":"14px 28px",width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>See how it works</button>
           </div>
-          <p style={{ marginTop:16,fontSize:12,color:C.t4 }}>14-day free trial · No credit card · $49/mo after · Cancel any time</p>
+          <p style={{ marginTop:16,fontSize:12,color:C.t4 }}>14-day free trial · No credit card · $49.99/mo after · Cancel any time</p>
         </div>
       </section>
 
@@ -553,10 +553,10 @@ function Landing() {
             <div style={{ background:`linear-gradient(135deg,${C.bg3},${C.bg4})`,padding:mob?"28px 20px":"40px 48px",textAlign:"center",borderBottom:`1px solid ${C.b2}` }}>
               <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:14 }}>PRO PLAN — EVERYTHING INCLUDED</div>
               <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"center",gap:4,marginBottom:4 }}>
-                <span style={{ fontSize:mob?60:80,fontWeight:900,letterSpacing:"-.05em",color:C.t1,lineHeight:1 }}>$49</span>
+                <span style={{ fontSize:mob?60:80,fontWeight:900,letterSpacing:"-.05em",color:C.t1,lineHeight:1 }}>$49.99</span>
                 <span style={{ fontSize:16,color:C.t3,fontWeight:400,marginBottom:10 }}>/month</span>
               </div>
-              <div style={{ fontSize:13,color:C.t4,marginBottom:28 }}>or $490/year — 2 months free</div>
+              <div style={{ fontSize:13,color:C.t4,marginBottom:28 }}>or $490.99/year — 2 months free</div>
               <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:mob?8:10,marginBottom:28,textAlign:"left" }}>
                 {ALL_FEATURES.map(f=>(
                   <div key={f} style={{ display:"flex",alignItems:"center",gap:9 }}>
@@ -568,7 +568,7 @@ function Landing() {
               <button onClick={()=>nav("signup")} style={{ ...btnP(C.vi,true),fontSize:mob?15:16,padding:"15px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:380 }}>
                 Start 14-day free trial
               </button>
-              <div style={{ marginTop:12,fontSize:12,color:C.t4 }}>No credit card required · $49/mo after trial · Cancel any time</div>
+              <div style={{ marginTop:12,fontSize:12,color:C.t4 }}>No credit card required · $49.99/mo after trial · Cancel any time</div>
             </div>
           </div>
           <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:14 }}>See full details & FAQ →</button>
@@ -676,7 +676,7 @@ function Landing() {
         </h2>
         <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:28 }}>14-day free trial. No credit card. Cancel any time.</p>
         <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 28px":"15px 36px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free trial →</button>
-        <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49/month after trial · Cancel any time</div>
+        <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49.99/month after trial · Cancel any time</div>
       </section>
 
       <footer style={{ background:C.bg,borderTop:`1px solid ${C.b1}`,padding:`20px ${px}px` }}>
@@ -698,11 +698,11 @@ function Landing() {
 
 // ── Pricing Page ──────────────────────────────────────────────────────────────
 const FAQ = [
-  { q:"What happens after the 14-day trial?", a:"Your account converts to $49/month. We send a reminder 3 days before — you're never surprised. Cancel any time before then and you won't be charged a penny." },
+  { q:"What happens after the 14-day trial?", a:"Your account converts to $49.99/month. We send a reminder 3 days before — you're never surprised. Cancel any time before then and you won't be charged a penny." },
   { q:"Do I need a credit card to start?", a:"No. Start with just your email. We only ask for payment details when your trial ends." },
   { q:"Is there a contract or commitment?", a:"None. Month-to-month, cancel any time from your account settings. No cancellation fees, no questions asked." },
-  { q:"What does the annual plan cost?", a:"$490/year — that's 2 months free compared to paying monthly. Your savings of $98 shows up immediately." },
-  { q:"Can I use this for multiple locations?", a:"Yes. One account covers all your locations. Create a separate Smart QR and Rewards program per location — all under one $49/month subscription." },
+  { q:"What does the annual plan cost?", a:"$490.99/year — that's 2 months free compared to paying monthly. Your savings of $108.89 shows up immediately." },
+  { q:"Can I use this for multiple locations?", a:"Yes. One account covers all your locations. Create a separate Smart QR and Rewards program per location — all under one $49.99/month subscription." },
   { q:"What if I need help setting up?", a:"Email info@xhibitur.com and we'll get you live within 24 hours. We also offer a $149 white-glove setup where we configure everything for you." },
   { q:"How does the win-back rule work?", a:"You set a threshold — say 60 days. Any loyalty member who hasn't visited in that time automatically receives a custom offer you define. It runs silently in the background with zero effort from you." },
   { q:"What are the 10 smart rule types?", a:"Device, Time of day, Day of week, Weather, Language, Location, Scan count, Customer loyalty status, Event stage, and Inventory level. Mix and match to create any routing logic you need." },
@@ -715,7 +715,7 @@ function PricingPage() {
   const [legalModal,setLegalModal] = useState(null);
   const [loading,setLoading] = useState(false);
   const [err,setErr] = useState("");
-  const price = ann ? 41 : 49;
+  const price = ann ? 40.99 : 49.99;
   const px = mob?18:28;
 
   const startCheckout = async () => {
@@ -770,12 +770,12 @@ function PricingPage() {
               <span style={{ fontSize:mob?68:96,fontWeight:900,letterSpacing:"-.05em",color:C.t1,lineHeight:1 }}>${price}</span>
               <div style={{ paddingBottom:14,textAlign:"left" }}>
                 <div style={{ fontSize:17,color:C.t3,fontWeight:400 }}>/month</div>
-                {ann && <div style={{ fontSize:12,color:C.vi,fontWeight:600 }}>Save $98/yr</div>}
+                {ann && <div style={{ fontSize:12,color:C.vi,fontWeight:600 }}>Save $108.89/yr</div>}
               </div>
             </div>
             {ann
-              ? <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>Billed as $490/year</div>
-              : <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>or $490/year — 2 months free</div>
+              ? <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>Billed as $490.99/year</div>
+              : <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>or $490.99/year — 2 months free</div>
             }
             {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 14px",color:C.err,fontSize:13,marginBottom:16,maxWidth:400,margin:"0 auto 16px" }}>{err}</div>}
             <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:mob?15:17,padding:mob?"14px 28px":"16px 52px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:400,opacity:loading?.7:1 }}>
@@ -817,7 +817,7 @@ function PricingPage() {
               One customer brought back pays for the whole month.
             </div>
             <div style={{ fontSize:14,color:C.t4,marginBottom:24,maxWidth:500,margin:"0 auto 24px",lineHeight:1.65 }}>
-              The win-back rule generates more than $49 in recovered revenue for most businesses within their first 30 days.
+              The win-back rule generates more than $49.99 in recovered revenue for most businesses within their first 30 days.
             </div>
             <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:15,padding:"13px 32px",maxWidth:340,opacity:loading?.7:1 }}>
               {loading ? "Redirecting…" : user?"Start free trial — no card needed":"Start free trial — no card needed"}
@@ -881,7 +881,7 @@ function DashHome() {
         <div style={{ ...card(),padding:"16px 18px",marginBottom:18,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",border:`1px solid ${C.vi}30`,background:C.viDim }}>
           <div>
             <div style={{ fontWeight:700,color:C.t1,fontSize:14,marginBottom:2 }}>🎉 You're on your free trial — all features unlocked</div>
-            <div style={{ color:C.t4,fontSize:13 }}>$49/month after your 14-day trial. No surprises. Cancel any time.</div>
+            <div style={{ color:C.t4,fontSize:13 }}>$49.99/month after your 14-day trial. No surprises. Cancel any time.</div>
           </div>
           <button onClick={()=>nav("pricing")} style={{ ...btnP(),fontSize:13,padding:"9px 18px",width:mob?"100%":"auto" }}>Activate plan →</button>
         </div>
@@ -1289,13 +1289,13 @@ function AccountPage() {
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,flexWrap:"wrap",gap:8 }}>
               <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                 <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>Pro Plan</span>
-                <Tag color={C.vi}>{isTrial?"Free Trial":"$49/mo"}</Tag>
+                <Tag color={C.vi}>{isTrial?"Free Trial":"$49.99/mo"}</Tag>
               </div>
-              {isTrial && <button onClick={()=>nav("pricing")} style={{ ...btnP(),padding:"8px 16px",fontSize:13 }}>Activate plan — $49/mo</button>}
+              {isTrial && <button onClick={()=>nav("pricing")} style={{ ...btnP(),padding:"8px 16px",fontSize:13 }}>Activate plan — $49.99/mo</button>}
             </div>
             <div style={{ fontSize:12,color:C.t4,lineHeight:1.6 }}>
               {isTrial
-                ?"All features unlocked during your 14-day trial. $49/month after — no credit card needed yet."
+                ?"All features unlocked during your 14-day trial. $49.99/month after — no credit card needed yet."
                 :"All features included. Unlimited QRs, unlimited rewards, unlimited scans."
               }
             </div>
