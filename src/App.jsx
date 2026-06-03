@@ -80,27 +80,10 @@ function AuthProvider({ children }) {
   const [loading, setL] = useState(true);
   useEffect(() => { try { const s=localStorage.getItem("xr_u"); if(s) setU(JSON.parse(s)); } catch{} setL(false); },[]);
   const save = u => { setU(u); localStorage.setItem("xr_u", JSON.stringify(u)); };
- const signIn = async (em,pw) => {
+  const signIn = async (em,pw) => {
     const f = DEMOS[em.toLowerCase()];
     if (!f||f.pw!==pw) throw new Error("Invalid email or password");
-    
-    // Check Supabase for real plan status
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/users?email=eq.${em.toLowerCase()}&select=plan`,
-        {
-          headers: {
-            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          }
-        }
-      );
-      const data = await res.json();
-      const plan = data?.[0]?.plan || f.plan;
-      save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan });
-    } catch {
-      save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan:f.plan });
-    }
+    save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan:f.plan });
   };
   const signUp = async (em,pw,name) => {
     if (!em||!pw||!name) throw new Error("All fields required");
@@ -460,8 +443,22 @@ function Signup() {
     finally{ setBusy(false); }
   };
 
-  const chk = { width:18,height:18,accentColor:C.vi,cursor:"pointer",flexShrink:0,marginTop:1 };
-  const row = { display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:10 };
+  const row = { display:"flex",alignItems:"flex-start",gap:12,padding:"14px",background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:10 };
+
+  const CustomCheckbox = ({ id, checked, onChange }) => (
+    <div
+      onClick={()=>onChange({ target:{ checked:!checked } })}
+      style={{
+        width:22, height:22, borderRadius:6, flexShrink:0, marginTop:1,
+        border:`2px solid ${checked ? C.vi : C.b3}`,
+        background: checked ? C.vi : "transparent",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        cursor:"pointer", transition:"all .15s",
+      }}
+    >
+      {checked && <span style={{ color:"#000", fontSize:13, fontWeight:900, lineHeight:1 }}>✓</span>}
+    </div>
+  );
 
   return (
     <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49.99/month after.">
@@ -470,19 +467,19 @@ function Signup() {
           <div key={f.lb}><label style={lbl}>{f.lb}</label><input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
         ))}
         <div style={row}>
-          <input type="checkbox" id="age" checked={ageOk} onChange={e=>setAgeOk(e.target.checked)} style={chk}/>
-          <label htmlFor="age" style={{ fontSize:13,color:C.t3,lineHeight:1.55,cursor:"pointer" }}>
+          <CustomCheckbox id="age" checked={ageOk} onChange={e=>setAgeOk(e.target.checked)}/>
+          <label htmlFor="age" onClick={()=>setAgeOk(!ageOk)} style={{ fontSize:13,color:C.t3,lineHeight:1.55,cursor:"pointer",flex:1 }}>
             I confirm I am <strong style={{ color:C.t2 }}>13 years of age or older</strong>. Xhibitur Rewards is not intended for persons under 13.
           </label>
         </div>
         <div style={row}>
-          <input type="checkbox" id="terms" checked={termsOk} onChange={e=>setTermsOk(e.target.checked)} style={chk}/>
-          <label htmlFor="terms" style={{ fontSize:13,color:C.t3,lineHeight:1.55,cursor:"pointer" }}>
-            I agree to Xhibitur LLC's{" "}
+          <CustomCheckbox id="terms" checked={termsOk} onChange={e=>setTermsOk(e.target.checked)}/>
+          <label htmlFor="terms" style={{ fontSize:13,color:C.t3,lineHeight:1.55,flex:1 }}>
+            <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}>I agree to Xhibitur LLC's </span>
             <span onClick={e=>{e.preventDefault();setLegal("terms");}} style={{ color:C.vi,fontWeight:600,cursor:"pointer",textDecoration:"underline" }}>Terms of Use</span>
-            {" "}and{" "}
+            <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}> and </span>
             <span onClick={e=>{e.preventDefault();setLegal("privacy");}} style={{ color:C.vi,fontWeight:600,cursor:"pointer",textDecoration:"underline" }}>Privacy Policy</span>
-            , and consent to receive promotional SMS and email from Xhibitur LLC. Msg & data rates may apply. Reply STOP to opt out.
+            <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}>, and consent to receive promotional SMS and email from Xhibitur LLC. Msg & data rates may apply. Reply STOP to opt out.</span>
           </label>
         </div>
         {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
