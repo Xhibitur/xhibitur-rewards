@@ -80,10 +80,27 @@ function AuthProvider({ children }) {
   const [loading, setL] = useState(true);
   useEffect(() => { try { const s=localStorage.getItem("xr_u"); if(s) setU(JSON.parse(s)); } catch{} setL(false); },[]);
   const save = u => { setU(u); localStorage.setItem("xr_u", JSON.stringify(u)); };
-  const signIn = async (em,pw) => {
+ const signIn = async (em,pw) => {
     const f = DEMOS[em.toLowerCase()];
     if (!f||f.pw!==pw) throw new Error("Invalid email or password");
-    save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan:f.plan });
+    
+    // Check Supabase for real plan status
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/users?email=eq.${em.toLowerCase()}&select=plan`,
+        {
+          headers: {
+            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          }
+        }
+      );
+      const data = await res.json();
+      const plan = data?.[0]?.plan || f.plan;
+      save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan });
+    } catch {
+      save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan:f.plan });
+    }
   };
   const signUp = async (em,pw,name) => {
     if (!em||!pw||!name) throw new Error("All fields required");
