@@ -1300,9 +1300,6 @@ function AccountPage() {
               }
             </div>
           </div>
-          <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}1e`,borderRadius:10,padding:"13px 14px",fontSize:13,color:C.t4,lineHeight:1.65 }}>
-            <span style={{ color:C.viL,fontWeight:600 }}>💳 Stripe Setup:</span> Add your Stripe Price ID and <code style={{color:C.viL}}>STRIPE_SECRET_KEY</code> to Netlify environment variables, then deploy the Netlify checkout function. Email info@xhibitur.com for setup help.
-          </div>
         </div>
 
         <div style={{ ...card(),padding:mob?16:22,border:`1px solid ${C.err}1e` }}>
