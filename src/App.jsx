@@ -183,6 +183,7 @@ const TABS = [
   { id:"dashboard/qr",        icon:"▦",  label:"QR"        },
   { id:"dashboard/rewards",   icon:"◆",  label:"Rewards"   },
   { id:"dashboard/analytics", icon:"◈",  label:"Analytics" },
+  { id:"dashboard/stickers",  icon:"🏷", label:"Stickers"  },
   { id:"dashboard/account",   icon:"◉",  label:"Account"   },
 ];
 
@@ -915,7 +916,7 @@ function DashHome() {
             { icon:"▦",lbl:"New Smart QR",  desc:"Dynamic routing",  to:"dashboard/qr",        col:C.vi },
             { icon:"◆",lbl:"New Rewards",   desc:"Points & stamps",   to:"dashboard/rewards",   col:C.fu },
             { icon:"◈",lbl:"Analytics",     desc:"Scans & data",      to:"dashboard/analytics", col:C.em },
-            { icon:"◉",lbl:"Account",       desc:"Plan & billing",    to:"dashboard/account",   col:C.am },
+            { icon:"🏷",lbl:"Order Stickers",desc:"Co-branded vinyl",  to:"dashboard/stickers",  col:C.am },
           ].map(a=>(
             <div key={a.to} onClick={()=>nav(a.to)} style={{ display:"flex",alignItems:"flex-start",gap:10,padding:mob?12:14,background:C.bg3,border:`1px solid ${C.b1}`,borderRadius:10,cursor:"pointer",borderLeft:`2px solid ${a.col}`,minHeight:56,transition:"background .12s" }}
               onMouseEnter={e=>e.currentTarget.style.background=a.col+"10"}
@@ -1073,6 +1074,139 @@ function QRModal({ init,onSave,onClose }) {
   );
 }
 
+// ── Printable Sign Generator ──────────────────────────────────────────────────
+function generatePrintableSign(qr, qrDataUrl, bizName) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Loyalty Sign — ${bizName || qr.name}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .sign {
+      background: #000;
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 360px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .star-row {
+      color: #D4A017;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      margin-bottom: 20px;
+    }
+    .headline {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -.02em;
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+    .headline span { color: #D4A017; }
+    .subline {
+      font-size: 16px;
+      font-weight: 600;
+      color: #a3a3a3;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .qr-wrap {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      display: inline-block;
+      margin-bottom: 28px;
+      box-shadow: 0 0 0 4px #D4A017;
+    }
+    .qr-wrap img { display: block; width: 200px; height: 200px; }
+    .badge {
+      background: #D4A017;
+      color: #000;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      padding: 6px 16px;
+      border-radius: 99px;
+      display: inline-block;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .footer {
+      font-size: 11px;
+      color: #525252;
+      line-height: 1.6;
+    }
+    .footer strong { color: #D4A017; }
+    .divider {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      margin: 20px 0;
+    }
+    .print-note {
+      display: block;
+      margin-top: 32px;
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .sign { box-shadow: none; border: 2px solid #D4A017; }
+      .print-note { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="sign">
+      <div class="star-row">⭐ SCAN TO JOIN ⭐</div>
+      <div class="headline">Our <span>FREE</span> loyalty<br/>rewards program</div>
+      <div class="subline">Earn rewards every time you visit.<br/>No app needed.</div>
+      <div class="qr-wrap">
+        <img src="${qrDataUrl}" alt="QR Code"/>
+      </div>
+      <br/>
+      <div class="badge">Scan with your phone camera</div>
+      <hr class="divider"/>
+      <div class="footer">
+        <strong>Powered by Xhibitur Rewards</strong><br/>
+        rewards.xhibitur.com
+      </div>
+    </div>
+    <span class="print-note">
+      Print this page and display it at your counter, door, or table.<br/>
+      Use Ctrl+P (Windows) or Cmd+P (Mac) to print.
+    </span>
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (win) {
+    win.onload = () => {
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+  }
+}
+
 function QRPage() {
   const { nav } = useNav(); const w=useW(); const mob=w<640;
   const [codes,setCodes]=useState([
@@ -1105,10 +1239,28 @@ function QRPage() {
                     <div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{qr.destinations?.flatMap(d=>d.rules).slice(0,3).map((r,i)=>{const rt=RT.find(x=>x.id===r.type);return <Tag key={i} color={rt?.col||C.vi}>{rt?.icon} {r.type==="time"?`${r.tf}-${r.tt}`:r.cond}</Tag>;})}</div>
                   </div>
                 </div>
-                <div style={{ display:"flex",gap:8,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.b1}` }}>
-                  {du && <a href={du} download={`${qr.name||"qr"}.png`} style={{ ...btnP(),flex:mob?1:0,padding:"9px 14px",fontSize:13,textDecoration:"none" }}>↓ PNG</a>}
+                <div style={{ display:"flex",gap:8,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.b1}`,flexWrap:"wrap" }}>
+                  {du && <a href={du} download={`${qr.name||"qr"}.png`} style={{ ...btnP(),flex:mob?1:0,padding:"9px 14px",fontSize:13,textDecoration:"none" }}>↓ QR PNG</a>}
+                  {du && (
+                    <button
+                      onClick={()=>generatePrintableSign(qr, du, qr.name)}
+                      style={{ ...btnP(C.em),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}
+                    >
+                      🖨 Print Sign
+                    </button>
+                  )}
                   <button onClick={()=>{setEd(qr);setModal(true);}} style={{ ...btnG(),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}>Edit</button>
                   <button onClick={()=>setCodes(codes.filter(x=>x.id!==qr.id))} style={{ padding:"9px 14px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",flex:mob?1:0,minHeight:44 }}>Delete</button>
+                </div>
+
+                {/* Print sign callout for new users */}
+                <div style={{ marginTop:12,background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap" }}>
+                  <span style={{ fontSize:18 }}>💡</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12,fontWeight:600,color:C.em,marginBottom:2 }}>Display at your counter today</div>
+                    <div style={{ fontSize:11,color:C.t4 }}>Tap "Print Sign" to get a ready-to-print loyalty sign. Works at any printer — free.</div>
+                  </div>
+                  {du && <button onClick={()=>generatePrintableSign(qr, du, qr.name)} style={{ ...btnP(C.em),padding:"8px 14px",fontSize:12,whiteSpace:"nowrap" }}>Print now →</button>}
                 </div>
               </div>
             );
@@ -1328,8 +1480,384 @@ function AccountPage() {
   );
 }
 
+// ── Check-In Page ─────────────────────────────────────────────────────────────
+function CheckInPage() {
+  const { nav } = useNav();
+  const w=useW(); const mob=w<640;
+
+  // Get business slug from URL hash e.g. #/checkin/harlem-cafe
+  const slug = window.location.hash.replace(/^#\/?checkin\/?/,"").split("?")[0] || "";
+
+  const [step, setStep] = useState("enter"); // enter | stamped | new | error
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [stamps, setStamps] = useState(0);
+  const [goal, setGoal] = useState(10);
+  const [reward, setReward] = useState("Free item");
+  const [bizName, setBizName] = useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [redeemCode, setRedeemCode] = useState("");
+
+  // Load business info from KV via a simple fetch
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`https://${slug}.qr.xhibitur.com`)
+      .catch(()=>{});
+    // Business name is derived from slug for now
+    setBizName(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+  },[slug]);
+
+  const handleCheckin = async e => {
+    e.preventDefault();
+    if (!email) { setErr("Please enter your email."); return; }
+    setBusy(true); setErr("");
+
+    try {
+      // Get existing stamps from localStorage keyed by slug+email
+      const key = `stamps_${slug}_${email.toLowerCase()}`;
+      const last = localStorage.getItem(`${key}_last`);
+      const now = Date.now();
+      const COOLDOWN = 4 * 60 * 60 * 1000; // 4 hours
+
+      if (last && now - parseInt(last) < COOLDOWN) {
+        const hoursLeft = Math.ceil((COOLDOWN - (now - parseInt(last))) / 3600000);
+        setErr(`You already checked in recently. Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn your next stamp.`);
+        setBusy(false);
+        return;
+      }
+
+      const current = parseInt(localStorage.getItem(key) || "0");
+      const newStamps = current + 1;
+
+      if (newStamps >= goal) {
+        // Generate redemption code
+        const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+        localStorage.setItem(key, "0"); // reset stamps
+        localStorage.removeItem(`${key}_last`);
+        setRedeemCode(code);
+        setStamps(0);
+        setStep("redeem");
+      } else {
+        localStorage.setItem(key, newStamps.toString());
+        localStorage.setItem(`${key}_last`, now.toString());
+        setStamps(newStamps);
+
+        // Save name if new
+        if (name) localStorage.setItem(`${key}_name`, name);
+
+        const savedName = name || localStorage.getItem(`${key}_name`) || "";
+        const isNew = current === 0 && !localStorage.getItem(`${key}_name`);
+        setStep(isNew ? "welcome" : "stamped");
+      }
+    } catch(x) {
+      setErr("Something went wrong. Please try again.");
+    }
+    setBusy(false);
+  };
+
+  if (!slug) return (
+    <div style={{ minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ fontSize:40,marginBottom:16 }}>⚠️</div>
+        <div style={{ fontSize:18,fontWeight:700,color:C.t1,marginBottom:8 }}>Invalid QR code</div>
+        <div style={{ fontSize:14,color:C.t4 }}>This QR code is not linked to a business.</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20 }}>
+      {/* Header */}
+      <div style={{ marginBottom:32,textAlign:"center" }}>
+        <Wordmark/>
+        <div style={{ fontSize:13,color:C.t4,marginTop:6 }}>Loyalty Rewards</div>
+      </div>
+
+      <div style={{ width:"100%",maxWidth:400,animation:"fadeUp .28s ease" }}>
+
+        {/* Business name */}
+        <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ fontSize:22,fontWeight:800,color:C.t1,letterSpacing:"-.02em" }}>{bizName}</div>
+          <div style={{ fontSize:13,color:C.t4,marginTop:4 }}>Loyalty Rewards Program</div>
+        </div>
+
+        {/* STEP: Enter email */}
+        {step==="enter" && (
+          <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
+            <div style={{ textAlign:"center",marginBottom:20 }}>
+              <div style={{ fontSize:36,marginBottom:8 }}>🎯</div>
+              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Check in to earn a stamp</div>
+              <div style={{ fontSize:13,color:C.t4 }}>Collect {goal} stamps and get {reward}</div>
+            </div>
+            <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12 }}>
+              <div>
+                <label style={lbl}>Your email</label>
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} required
+                  onFocus={e=>e.target.style.borderColor=C.vi}
+                  onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              {!localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_name`) && email && (
+                <div>
+                  <label style={lbl}>Your name (optional)</label>
+                  <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="First name" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
+                    onFocus={e=>e.target.style.borderColor=C.vi}
+                    onBlur={e=>e.target.style.borderColor=C.b2}/>
+                </div>
+              )}
+              {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
+              <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>
+                {busy?"Checking in…":"Check in & earn stamp ✓"}
+              </button>
+            </form>
+            <p style={{ textAlign:"center",marginTop:14,fontSize:12,color:C.t4 }}>No app needed · Free to join</p>
+          </div>
+        )}
+
+        {/* STEP: Stamp awarded */}
+        {step==="stamped" && (
+          <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
+            <div style={{ fontSize:48,marginBottom:12 }}>⭐</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>Stamp added!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>You now have {stamps} of {goal} stamps</div>
+
+            {/* Stamp progress */}
+            <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginBottom:24 }}>
+              {Array.from({length:goal}).map((_,i)=>(
+                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,transition:"all .2s" }}>
+                  {i<stamps?"⭐":""}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:20 }}>
+              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>{goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!</div>
+            </div>
+
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Done</button>
+          </div>
+        )}
+
+        {/* STEP: Welcome new member */}
+        {step==="welcome" && (
+          <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
+            <div style={{ fontSize:48,marginBottom:12 }}>🎉</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>Welcome{name?`, ${name}`:""}!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>You've earned your first stamp at {bizName}</div>
+
+            <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginBottom:24 }}>
+              {Array.from({length:goal}).map((_,i)=>(
+                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<1?C.vi:C.bg3,border:`2px solid ${i<1?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>
+                  {i<1?"⭐":""}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:20 }}>
+              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>Collect {goal} stamps and get {reward} — free!</div>
+            </div>
+
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Got it!</button>
+          </div>
+        )}
+
+        {/* STEP: Redeem reward */}
+        {step==="redeem" && (
+          <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center",boxShadow:`0 0 40px rgba(34,197,94,.2)` }}>
+            <div style={{ fontSize:48,marginBottom:12 }}>🏆</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>You earned it!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>Show this code to the cashier to claim your {reward}</div>
+
+            <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"20px 16px",marginBottom:24 }}>
+              <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
+              <div style={{ fontSize:28,fontWeight:900,color:C.ok,letterSpacing:".1em",fontFamily:"DM Mono,monospace" }}>{redeemCode}</div>
+            </div>
+
+            <div style={{ fontSize:12,color:C.t4,marginBottom:20 }}>Your stamp card has been reset. Start collecting again!</div>
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.ok,true),fontSize:14,padding:"12px" }}>Start collecting again</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Sticker Order Page ─────────────────────────────────────────────────────────
+function StickerOrderPage() {
+  const { user } = useAuth(); const { nav } = useNav();
+  const w=useW(); const mob=w<640;
+  const [pack, setPack] = useState("starter");
+  const [bizName, setBizName] = useState(user?.name||"");
+  const [addr1, setAddr1] = useState("");
+  const [addr2, setAddr2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+  const [style, setStyle] = useState("gold-black");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const PACKS = [
+    { id:"starter", name:"Starter Pack", qty:"3 stickers", price:49, priceId:"price_STICKER_STARTER" },
+    { id:"business", name:"Business Pack", qty:"10 stickers", price:99, priceId:"price_STICKER_BUSINESS" },
+  ];
+  const STYLES = [
+    { id:"gold-black", name:"Gold on Black", desc:"Gold QR on black background — premium look" },
+    { id:"black-gold", name:"Black on Gold", desc:"Black QR on gold background — high contrast" },
+    { id:"white-black", name:"White on Black", desc:"Clean minimal white on black" },
+  ];
+
+  const handleOrder = async e => {
+    e.preventDefault();
+    if (!bizName||!addr1||!city||!state||!zip) { setErr("Please fill in all required fields."); return; }
+    if (!user) { nav("signup"); return; }
+    setLoading(true); setErr("");
+
+    try {
+      const selectedPack = PACKS.find(p=>p.id===pack);
+      const res = await fetch("/.netlify/functions/create-checkout", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          priceId: selectedPack.priceId,
+          email: user.email,
+          metadata: {
+            type:"sticker_order",
+            pack,
+            bizName,
+            address:`${addr1}${addr2?", "+addr2:""}, ${city}, ${state} ${zip}`,
+            style,
+          }
+        }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { setErr("Something went wrong. Please try again or email info@xhibitur.com"); }
+    } catch(x) {
+      setErr("Something went wrong. Please try again or email info@xhibitur.com");
+    }
+    setLoading(false);
+  };
+
+  const si = { ...inp, background:C.bg3, border:`1px solid ${C.b2}` };
+
+  return (
+    <DashShell>
+      <PgHead title="Order Sticker Kit" sub="Co-branded QR stickers delivered to your door."/>
+
+      <div style={{ maxWidth:mob?undefined:600 }}>
+
+        {/* Why stickers */}
+        <div style={{ ...card(),padding:mob?16:20,marginBottom:16,border:`1px solid ${C.vi}25`,background:C.viDim }}>
+          <div style={{ fontWeight:700,fontSize:14,color:C.t1,marginBottom:8 }}>📦 What you get</div>
+          <div style={{ fontSize:13,color:C.t3,lineHeight:1.7 }}>
+            Professional co-branded QR stickers with your business name and the Xhibitur Rewards logo. Weatherproof vinyl — perfect for counters, windows, menus and tables. Each sticker encodes your unique loyalty QR code.
+          </div>
+        </div>
+
+        <form onSubmit={handleOrder} style={{ display:"flex",flexDirection:"column",gap:16 }}>
+
+          {/* Pack selection */}
+          <div>
+            <label style={lbl}>Choose your pack</label>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+              {PACKS.map(p=>(
+                <div key={p.id} onClick={()=>setPack(p.id)} style={{ padding:mob?"14px 12px":"18px 16px",borderRadius:12,cursor:"pointer",border:`2px solid ${pack===p.id?C.vi:C.b2}`,background:pack===p.id?C.viDim:C.bg3,transition:"all .12s",position:"relative" }}>
+                  {p.id==="business" && <div style={{ position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",background:C.vi,color:"#000",borderRadius:99,padding:"2px 10px",fontSize:8,fontWeight:700,whiteSpace:"nowrap" }}>BEST VALUE</div>}
+                  <div style={{ fontSize:15,fontWeight:700,color:C.t1,marginBottom:4 }}>{p.name}</div>
+                  <div style={{ fontSize:12,color:C.t4,marginBottom:8 }}>{p.qty}</div>
+                  <div style={{ fontSize:22,fontWeight:900,color:pack===p.id?C.vi:C.t1,letterSpacing:"-.04em" }}>${p.price}</div>
+                  <div style={{ fontSize:10,color:C.t4 }}>one-time</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sticker style */}
+          <div>
+            <label style={lbl}>Sticker style</label>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {STYLES.map(s=>(
+                <div key={s.id} onClick={()=>setStyle(s.id)} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,cursor:"pointer",border:`1px solid ${style===s.id?C.vi:C.b2}`,background:style===s.id?C.viDim:C.bg3,transition:"all .12s" }}>
+                  <div style={{ width:20,height:20,borderRadius:"50%",border:`2px solid ${style===s.id?C.vi:C.b3}`,background:style===s.id?C.vi:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                    {style===s.id && <span style={{ width:8,height:8,borderRadius:"50%",background:"#000",display:"block" }}/>}
+                  </div>
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:600,color:C.t1 }}>{s.name}</div>
+                    <div style={{ fontSize:11,color:C.t4 }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Business details */}
+          <div>
+            <label style={lbl}>Business name (appears on sticker)</label>
+            <input value={bizName} onChange={e=>setBizName(e.target.value)} placeholder="Harlem Cafe" style={si} required
+              onFocus={e=>e.target.style.borderColor=C.vi}
+              onBlur={e=>e.target.style.borderColor=C.b2}/>
+          </div>
+
+          {/* Shipping address */}
+          <div>
+            <label style={lbl}>Shipping address</label>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              <input value={addr1} onChange={e=>setAddr1(e.target.value)} placeholder="Street address" style={si} required
+                onFocus={e=>e.target.style.borderColor=C.vi}
+                onBlur={e=>e.target.style.borderColor=C.b2}/>
+              <input value={addr2} onChange={e=>setAddr2(e.target.value)} placeholder="Apt, suite, unit (optional)" style={si}
+                onFocus={e=>e.target.style.borderColor=C.vi}
+                onBlur={e=>e.target.style.borderColor=C.b2}/>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 80px 100px",gap:8 }}>
+                <input value={city} onChange={e=>setCity(e.target.value)} placeholder="City" style={si} required
+                  onFocus={e=>e.target.style.borderColor=C.vi}
+                  onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={state} onChange={e=>setState(e.target.value)} placeholder="NY" maxLength={2} style={si} required
+                  onFocus={e=>e.target.style.borderColor=C.vi}
+                  onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={zip} onChange={e=>setZip(e.target.value)} placeholder="10001" maxLength={5} style={si} required
+                  onFocus={e=>e.target.style.borderColor=C.vi}
+                  onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+            </div>
+          </div>
+
+          {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
+
+          {/* Order summary */}
+          <div style={{ ...card(),padding:16,border:`1px solid ${C.b2}` }}>
+            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
+              <span style={{ fontSize:13,color:C.t4 }}>{PACKS.find(p=>p.id===pack)?.name}</span>
+              <span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>${PACKS.find(p=>p.id===pack)?.price}.00</span>
+            </div>
+            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
+              <span style={{ fontSize:13,color:C.t4 }}>Shipping</span>
+              <span style={{ fontSize:13,color:C.ok,fontWeight:600 }}>Free</span>
+            </div>
+            <div style={{ borderTop:`1px solid ${C.b2}`,paddingTop:8,display:"flex",justifyContent:"space-between" }}>
+              <span style={{ fontSize:14,fontWeight:700,color:C.t1 }}>Total</span>
+              <span style={{ fontSize:16,fontWeight:900,color:C.vi }}>${PACKS.find(p=>p.id===pack)?.price}.00</span>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} style={{ ...btnP(C.vi,true),fontSize:15,padding:"14px",boxShadow:`0 0 30px ${C.viGlo}`,opacity:loading?.7:1 }}>
+            {loading?"Redirecting to checkout…":`Order now — $${PACKS.find(p=>p.id===pack)?.price} →`}
+          </button>
+
+          <p style={{ textAlign:"center",fontSize:12,color:C.t4,margin:0 }}>
+            Free shipping · Delivered in 7-10 business days · Weatherproof vinyl
+          </p>
+        </form>
+      </div>
+    </DashShell>
+  );
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
-const PROTECTED = ["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account"];
+const PROTECTED = ["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers"];
 
 function AppCore() {
   const { user,loading } = useAuth(); const { page,nav } = useNav();
@@ -1348,10 +1876,14 @@ function AppCore() {
     </div>
   );
 
+  // Handle checkin routes: #/checkin/slug
+  if (page.startsWith("checkin")) return <CheckInPage/>;
+
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
     dashboard:<DashHome/>, "dashboard/qr":<QRPage/>, "dashboard/rewards":<RewardsPage/>,
     "dashboard/analytics":<AnalyticsPage/>, "dashboard/account":<AccountPage/>,
+    "dashboard/stickers":<StickerOrderPage/>,
   };
   return views[page] || <Landing/>;
 }
