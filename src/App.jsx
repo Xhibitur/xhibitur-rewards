@@ -11,8 +11,9 @@ import React, { useState, useEffect, useRef, createContext, useContext } from "r
   s.id = "xr-g";
   s.textContent = `
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-    body{font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;background:#000;color:#fff;min-height:100vh}
+    html,body{-webkit-text-size-adjust:100%;scroll-behavior:smooth;width:100%;overflow-x:hidden}
+    body{font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;background:#000;color:#fff;min-height:100vh;margin:0;padding:0}
+    #root{width:100%;min-height:100vh;background:#000}
     input,select,button,textarea{font-family:inherit;-webkit-appearance:none;appearance:none}
     select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23666' d='M5 7L0 2h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px!important}
     button{touch-action:manipulation}
