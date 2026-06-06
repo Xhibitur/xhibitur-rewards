@@ -954,6 +954,26 @@ function QRModal({ init,onSave,onClose }) {
   const [dests,setDests]=useState(init?.destinations||[mkD()]); const [fb,setFb]=useState(init?.fallback||"");
   const [fg,setFg]=useState(init?.fg||C.t1); const [tab,setTab]=useState("build"); const [png,setPng]=useState(null);
   const [saving,setSaving]=useState(false);
+
+  const handleSave = async () => {
+    if (!name) return;
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
+    const autoUrl = `https://${slug}.qr.xhibitur.com`;
+    setSaving(true);
+    try {
+      const res = await fetch("/.netlify/functions/save-qr-rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, name, destinations: dests, fallback: fb }),
+      });
+      const data = await res.json();
+      if (!data.success) console.error("KV save error:", data.error);
+    } catch(e) {
+      console.error("KV save failed:", e);
+    }
+    setSaving(false);
+    onSave({ id: init?.id || gid(), name, workerUrl: autoUrl, destinations: dests, fallback: fb, fg });
+  };
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
@@ -1063,21 +1083,7 @@ function QRModal({ init,onSave,onClose }) {
         </div>
         <div style={{ padding:"14px 18px",borderTop:`1px solid ${C.b1}`,display:"flex",gap:10,background:C.bg3,flexShrink:0 }}>
           <button onClick={onClose} style={{ ...btnG(mob),flex:mob?1:0,padding:"10px 18px",fontSize:14 }}>Cancel</button>
-          <button onClick={async ()=>{
-            // Auto-generate slug from campaign name
-            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
-            const autoUrl = `https://${slug}.qr.xhibitur.com`;
-            setSaving(true);
-            try {
-              await fetch("/.netlify/functions/save-qr-rules", {
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body: JSON.stringify({ slug, name, destinations:dests, fallback:fb }),
-              });
-            } catch(e) { console.error("KV save failed:", e); }
-            setSaving(false);
-            onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:fb, fg });
-          }} disabled={saving} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14,opacity:saving?.7:1 }}>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14,opacity:saving?.7:1 }}>
             {saving?"Saving…":init?"Save changes":"Create QR code"}
           </button>
         </div>
