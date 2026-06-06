@@ -953,6 +953,7 @@ function QRModal({ init,onSave,onClose }) {
   const [name,setName]=useState(init?.name||""); const [wurl,setWurl]=useState(init?.workerUrl||"");
   const [dests,setDests]=useState(init?.destinations||[mkD()]); const [fb,setFb]=useState(init?.fallback||"");
   const [fg,setFg]=useState(init?.fg||C.t1); const [tab,setTab]=useState("build"); const [png,setPng]=useState(null);
+  const [saving,setSaving]=useState(false);
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
@@ -964,15 +965,22 @@ function QRModal({ init,onSave,onClose }) {
         <div style={{ padding:"16px 18px",background:C.bg3,borderBottom:`1px solid ${C.b1}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,flexShrink:0 }}>
           <span style={{ color:C.t1,fontWeight:700,fontSize:15 }}>{init?"Edit Smart QR":"New Smart QR"}</span>
           <div style={{ display:"flex",gap:4 }}>
-            {["build","preview","deploy"].map(t=><button key={t} onClick={()=>setTab(t)} style={{ padding:"7px 12px",borderRadius:8,border:"none",background:tab===t?C.vi:"transparent",color:tab===t?"#fff":C.t4,fontSize:12,fontWeight:600,cursor:"pointer",minHeight:36 }}>{t==="build"?"✏ Build":t==="preview"?"👁 Preview":"↗ Deploy"}</button>)}
+            {["build","preview"].map(t=><button key={t} onClick={()=>setTab(t)} style={{ padding:"7px 12px",borderRadius:8,border:"none",background:tab===t?C.vi:"transparent",color:tab===t?"#fff":C.t4,fontSize:12,fontWeight:600,cursor:"pointer",minHeight:36 }}>{t==="build"?"✏ Build":"👁 Preview"}</button>)}
             <button onClick={onClose} style={{ background:C.bg4,border:`1px solid ${C.b3}`,color:C.t4,width:36,height:36,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",marginLeft:4 }}>×</button>
           </div>
         </div>
         <div style={{ flex:1,overflowY:"auto",padding:mob?16:20,WebkitOverflowScrolling:"touch" }}>
           {tab==="build" && (
             <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
-              <div><label style={lbl}>Campaign name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Summer Menu" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-              <div><label style={lbl}>Worker URL</label><input value={wurl} onChange={e=>setWurl(e.target.value)} placeholder="https://my-qr.workers.dev" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+              <div>
+                <label style={lbl}>Campaign name</label>
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Summer Menu" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                {name && <div style={{ fontSize:11,color:C.t4,marginTop:6 }}>Your QR URL will be: <span style={{ color:C.vi,fontFamily:"DM Mono,monospace" }}>https://{name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com</span></div>}
+              </div>
+              <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px" }}>
+                <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
+                <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
+              </div>
               <div>
                 <label style={lbl}>Quick-start templates</label>
                 <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
@@ -1033,9 +1041,11 @@ function QRModal({ init,onSave,onClose }) {
               <div style={{ background:C.bg3,borderRadius:16,padding:"28px 24px",marginBottom:16,border:`1px solid ${C.b2}` }}>
                 <div style={{ color:C.t4,fontSize:10,fontWeight:600,letterSpacing:".1em",marginBottom:12 }}>{(name||"SMART QR CODE").toUpperCase()}</div>
                 <div style={{ display:"inline-block",background:C.bg3,padding:14,borderRadius:14,border:`1px solid ${C.b2}`,boxShadow:`0 0 40px ${C.viGlo}` }}>
-                  <QRBox value={wurl||"https://xhibitur.com"} fg={fg} bg={C.bg3} size={180} onUrl={setPng}/>
+                  <QRBox value={name ? `https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com` : "https://xhibitur.com"} fg={fg} bg={C.bg3} size={180} onUrl={setPng}/>
                 </div>
-                <div style={{ color:C.t4,fontSize:11,marginTop:12,wordBreak:"break-all" }}>{wurl||"Set Worker URL to encode"}</div>
+                <div style={{ color:C.t4,fontSize:11,marginTop:12,wordBreak:"break-all" }}>
+                  {name ? `https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com` : "Enter a campaign name to generate URL"}
+                </div>
                 {png && <a href={png} download={`${name||"qr"}.png`} style={{ display:"inline-flex",alignItems:"center",gap:6,marginTop:14,...btnP(),textDecoration:"none",fontSize:13 }}>↓ Download QR PNG</a>}
               </div>
               {dests.map((d,i)=>(
@@ -1050,24 +1060,26 @@ function QRModal({ init,onSave,onClose }) {
               ))}
             </div>
           )}
-          {tab==="deploy" && (
-            <div>
-              <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"14px 16px",marginBottom:14,fontSize:13,color:C.em,lineHeight:1.75 }}>
-                <strong>4 steps to go live:</strong><br/>1. Copy code below<br/>2. workers.cloudflare.com → New Worker → paste → Deploy<br/>3. Copy your .workers.dev URL → paste in Build tab<br/>4. Preview → Download QR PNG
-              </div>
-              <div style={{ background:C.bg,border:`1px solid ${C.b1}`,borderRadius:12,overflow:"hidden" }}>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${C.b1}` }}>
-                  <span style={{ color:C.t4,fontSize:11,fontFamily:"DM Mono,monospace" }}>worker.js</span>
-                  <button onClick={()=>navigator.clipboard.writeText(wc)} style={{ ...btnG(),padding:"6px 13px",fontSize:12,minHeight:34 }}>Copy</button>
-                </div>
-                <pre style={{ margin:0,padding:14,color:"#86efac",fontSize:10,lineHeight:1.7,overflowX:"auto",maxHeight:220,overflowY:"auto",fontFamily:"DM Mono,monospace",whiteSpace:"pre-wrap",wordBreak:"break-all" }}>{wc}</pre>
-              </div>
-            </div>
-          )}
         </div>
         <div style={{ padding:"14px 18px",borderTop:`1px solid ${C.b1}`,display:"flex",gap:10,background:C.bg3,flexShrink:0 }}>
           <button onClick={onClose} style={{ ...btnG(mob),flex:mob?1:0,padding:"10px 18px",fontSize:14 }}>Cancel</button>
-          <button onClick={()=>onSave({id:init?.id||gid(),name,workerUrl:wurl,destinations:dests,fallback:fb,fg})} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14 }}>{init?"Save changes":"Create QR code"}</button>
+          <button onClick={async ()=>{
+            // Auto-generate slug from campaign name
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
+            const autoUrl = `https://${slug}.qr.xhibitur.com`;
+            setSaving(true);
+            try {
+              await fetch("/.netlify/functions/save-qr-rules", {
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify({ slug, name, destinations:dests, fallback:fb }),
+              });
+            } catch(e) { console.error("KV save failed:", e); }
+            setSaving(false);
+            onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:fb, fg });
+          }} disabled={saving} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14,opacity:saving?.7:1 }}>
+            {saving?"Saving…":init?"Save changes":"Create QR code"}
+          </button>
         </div>
       </div>
     </div>
@@ -1235,7 +1247,7 @@ function QRPage() {
                       <span style={{ fontWeight:700,fontSize:mob?14:15,color:C.t1 }}>{qr.name}</span>
                       <Tag color={C.ok} dot>Active</Tag>
                     </div>
-                    <div style={{ fontSize:11,color:C.t4,marginBottom:7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{qr.workerUrl||"Worker URL not set"}</div>
+                    <div style={{ fontSize:11,color:C.t4,marginBottom:7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{qr.workerUrl||"QR URL not set"}</div>
                     <div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{qr.destinations?.flatMap(d=>d.rules).slice(0,3).map((r,i)=>{const rt=RT.find(x=>x.id===r.type);return <Tag key={i} color={rt?.col||C.vi}>{rt?.icon} {r.type==="time"?`${r.tf}-${r.tt}`:r.cond}</Tag>;})}</div>
                   </div>
                 </div>
