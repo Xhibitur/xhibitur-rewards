@@ -995,7 +995,11 @@ function QRModal({ init,onSave,onClose }) {
             <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
               <div>
                 <label style={lbl}>Campaign name</label>
-                <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Summer Menu" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={name} onChange={e=>{
+                  setName(e.target.value);
+                  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
+                  if (slug && !fb) setFb(`https://rewards.xhibitur.com/#/checkin/${slug}`);
+                }} placeholder="e.g. Harlem Cafe Loyalty" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
                 {name && <div style={{ fontSize:11,color:C.t4,marginTop:6 }}>Your QR URL will be: <span style={{ color:C.vi,fontFamily:"DM Mono,monospace" }}>https://{name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com</span></div>}
               </div>
               <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px" }}>
@@ -1725,8 +1729,7 @@ function StickerOrderPage() {
   const [loading, setLoading] = useState(false);
 
   const PACKS = [
-    { id:"starter", name:"Starter Pack", qty:"3 stickers", price:49, priceId:"price_STICKER_STARTER" },
-    { id:"business", name:"Business Pack", qty:"10 stickers", price:99, priceId:"price_STICKER_BUSINESS" },
+    { id:"standard", name:"Sticker Pack", qty:"10 co-branded stickers", price:29.99, priceId:"price_1TfQtIId1xxQI6ctWeURjbPJ" },
   ];
   const STYLES = [
     { id:"gold-black", name:"Gold on Black", desc:"Gold QR on black background — premium look" },
@@ -1741,19 +1744,18 @@ function StickerOrderPage() {
     setLoading(true); setErr("");
 
     try {
-      const selectedPack = PACKS.find(p=>p.id===pack);
+      const selectedPack = PACKS[0];
       const res = await fetch("/.netlify/functions/create-checkout", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
           priceId: selectedPack.priceId,
           email: user.email,
+          mode: "payment",
           metadata: {
             type:"sticker_order",
-            pack,
             bizName,
             address:`${addr1}${addr2?", "+addr2:""}, ${city}, ${state} ${zip}`,
-            style,
           }
         }),
       });
@@ -1784,37 +1786,17 @@ function StickerOrderPage() {
 
         <form onSubmit={handleOrder} style={{ display:"flex",flexDirection:"column",gap:16 }}>
 
-          {/* Pack selection */}
-          <div>
-            <label style={lbl}>Choose your pack</label>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
-              {PACKS.map(p=>(
-                <div key={p.id} onClick={()=>setPack(p.id)} style={{ padding:mob?"14px 12px":"18px 16px",borderRadius:12,cursor:"pointer",border:`2px solid ${pack===p.id?C.vi:C.b2}`,background:pack===p.id?C.viDim:C.bg3,transition:"all .12s",position:"relative" }}>
-                  {p.id==="business" && <div style={{ position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",background:C.vi,color:"#000",borderRadius:99,padding:"2px 10px",fontSize:8,fontWeight:700,whiteSpace:"nowrap" }}>BEST VALUE</div>}
-                  <div style={{ fontSize:15,fontWeight:700,color:C.t1,marginBottom:4 }}>{p.name}</div>
-                  <div style={{ fontSize:12,color:C.t4,marginBottom:8 }}>{p.qty}</div>
-                  <div style={{ fontSize:22,fontWeight:900,color:pack===p.id?C.vi:C.t1,letterSpacing:"-.04em" }}>${p.price}</div>
-                  <div style={{ fontSize:10,color:C.t4 }}>one-time</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sticker style */}
-          <div>
-            <label style={lbl}>Sticker style</label>
-            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-              {STYLES.map(s=>(
-                <div key={s.id} onClick={()=>setStyle(s.id)} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,cursor:"pointer",border:`1px solid ${style===s.id?C.vi:C.b2}`,background:style===s.id?C.viDim:C.bg3,transition:"all .12s" }}>
-                  <div style={{ width:20,height:20,borderRadius:"50%",border:`2px solid ${style===s.id?C.vi:C.b3}`,background:style===s.id?C.vi:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                    {style===s.id && <span style={{ width:8,height:8,borderRadius:"50%",background:"#000",display:"block" }}/>}
-                  </div>
-                  <div>
-                    <div style={{ fontSize:13,fontWeight:600,color:C.t1 }}>{s.name}</div>
-                    <div style={{ fontSize:11,color:C.t4 }}>{s.desc}</div>
-                  </div>
-                </div>
-              ))}
+          {/* Single pack display */}
+          <div style={{ ...card(true),padding:mob?18:22,border:`2px solid ${C.vi}`,background:C.viDim,borderRadius:14 }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10 }}>
+              <div>
+                <div style={{ fontSize:16,fontWeight:700,color:C.t1,marginBottom:4 }}>🏷 10 Co-Branded QR Stickers</div>
+                <div style={{ fontSize:13,color:C.t3,lineHeight:1.6 }}>Weatherproof vinyl · Gold on Black · Your business name + QR code · Powered by Xhibitur Rewards</div>
+              </div>
+              <div style={{ textAlign:"right",flexShrink:0 }}>
+                <div style={{ fontSize:28,fontWeight:900,color:C.vi,letterSpacing:"-.04em" }}>$29.99</div>
+                <div style={{ fontSize:11,color:C.t4 }}>one-time · free shipping</div>
+              </div>
             </div>
           </div>
 
@@ -1855,8 +1837,8 @@ function StickerOrderPage() {
           {/* Order summary */}
           <div style={{ ...card(),padding:16,border:`1px solid ${C.b2}` }}>
             <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
-              <span style={{ fontSize:13,color:C.t4 }}>{PACKS.find(p=>p.id===pack)?.name}</span>
-              <span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>${PACKS.find(p=>p.id===pack)?.price}.00</span>
+              <span style={{ fontSize:13,color:C.t4 }}>10 Co-Branded QR Stickers</span>
+              <span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>$29.99</span>
             </div>
             <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
               <span style={{ fontSize:13,color:C.t4 }}>Shipping</span>
@@ -1864,12 +1846,12 @@ function StickerOrderPage() {
             </div>
             <div style={{ borderTop:`1px solid ${C.b2}`,paddingTop:8,display:"flex",justifyContent:"space-between" }}>
               <span style={{ fontSize:14,fontWeight:700,color:C.t1 }}>Total</span>
-              <span style={{ fontSize:16,fontWeight:900,color:C.vi }}>${PACKS.find(p=>p.id===pack)?.price}.00</span>
+              <span style={{ fontSize:16,fontWeight:900,color:C.vi }}>$29.99</span>
             </div>
           </div>
 
           <button type="submit" disabled={loading} style={{ ...btnP(C.vi,true),fontSize:15,padding:"14px",boxShadow:`0 0 30px ${C.viGlo}`,opacity:loading?.7:1 }}>
-            {loading?"Redirecting to checkout…":`Order now — $${PACKS.find(p=>p.id===pack)?.price} →`}
+            {loading?"Redirecting to checkout…":"Order 10 stickers — $29.99 →"}
           </button>
 
           <p style={{ textAlign:"center",fontSize:12,color:C.t4,margin:0 }}>
