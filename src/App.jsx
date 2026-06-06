@@ -1233,6 +1233,42 @@ function QRPage() {
   ]);
   const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
   const save=qr=>{ if(ed)setCodes(codes.map(x=>x.id===qr.id?qr:x));else setCodes([...codes,qr]); setModal(false);setEd(null); };
+
+  function QRCard({ qr, onEdit, onDelete, mob }) {
+    const [du,setDu]=useState(null);
+    return (
+      <div style={{ ...card(),padding:mob?14:18 }}>
+        <div style={{ display:"flex",gap:12,alignItems:"flex-start" }}>
+          <div style={{ background:C.bg3,borderRadius:8,padding:6,flexShrink:0,border:`1px solid ${C.b2}` }}>
+            <QRBox value={qr.workerUrl||"https://xhibitur.com"} fg={qr.fg||C.t1} bg={C.bg3} size={mob?64:76} onUrl={setDu}/>
+          </div>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:5,flexWrap:"wrap" }}>
+              <span style={{ fontWeight:700,fontSize:mob?14:15,color:C.t1 }}>{qr.name}</span>
+              <Tag color={C.ok} dot>Active</Tag>
+            </div>
+            <div style={{ fontSize:11,color:C.t4,marginBottom:7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{qr.workerUrl||"QR URL not set"}</div>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{qr.destinations?.flatMap(d=>d.rules).slice(0,3).map((r,i)=>{const rt=RT.find(x=>x.id===r.type);return <Tag key={i} color={rt?.col||C.vi}>{rt?.icon} {r.type==="time"?`${r.tf}-${r.tt}`:r.cond}</Tag>;})}</div>
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:8,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.b1}`,flexWrap:"wrap" }}>
+          {du && <a href={du} download={`${qr.name||"qr"}.png`} style={{ ...btnP(),flex:mob?1:0,padding:"9px 14px",fontSize:13,textDecoration:"none" }}>↓ QR PNG</a>}
+          {du && <button onClick={()=>generatePrintableSign(qr,du,qr.name)} style={{ ...btnP(C.em),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}>🖨 Print Sign</button>}
+          <button onClick={()=>onEdit(qr)} style={{ ...btnG(),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}>Edit</button>
+          <button onClick={()=>onDelete(qr.id)} style={{ padding:"9px 14px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",flex:mob?1:0,minHeight:44 }}>Delete</button>
+        </div>
+        <div style={{ marginTop:12,background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap" }}>
+          <span style={{ fontSize:18 }}>💡</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:12,fontWeight:600,color:C.em,marginBottom:2 }}>Display at your counter today</div>
+            <div style={{ fontSize:11,color:C.t4 }}>Tap "Print Sign" to get a ready-to-print loyalty sign. Works at any printer — free.</div>
+          </div>
+          {du && <button onClick={()=>generatePrintableSign(qr,du,qr.name)} style={{ ...btnP(C.em),padding:"8px 14px",fontSize:12,whiteSpace:"nowrap" }}>Print now →</button>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DashShell>
       <PgHead title="Smart QR Codes" sub="Route every scan to the right destination."
@@ -1240,49 +1276,11 @@ function QRPage() {
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {codes.length===0
           ?<Empty icon="▦" title="No Smart QR codes yet" body="Create your first dynamic QR code." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first QR</button>}/>
-          :codes.map(qr=>{
-            const [du,setDu]=useState(null);
-            return (
-              <div key={qr.id} style={{ ...card(),padding:mob?14:18 }}>
-                <div style={{ display:"flex",gap:12,alignItems:"flex-start" }}>
-                  <div style={{ background:C.bg3,borderRadius:8,padding:6,flexShrink:0,border:`1px solid ${C.b2}` }}>
-                    <QRBox value={qr.workerUrl||"https://xhibitur.com"} fg={qr.fg||C.t1} bg={C.bg3} size={mob?64:76} onUrl={setDu}/>
-                  </div>
-                  <div style={{ flex:1,minWidth:0 }}>
-                    <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:5,flexWrap:"wrap" }}>
-                      <span style={{ fontWeight:700,fontSize:mob?14:15,color:C.t1 }}>{qr.name}</span>
-                      <Tag color={C.ok} dot>Active</Tag>
-                    </div>
-                    <div style={{ fontSize:11,color:C.t4,marginBottom:7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{qr.workerUrl||"QR URL not set"}</div>
-                    <div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{qr.destinations?.flatMap(d=>d.rules).slice(0,3).map((r,i)=>{const rt=RT.find(x=>x.id===r.type);return <Tag key={i} color={rt?.col||C.vi}>{rt?.icon} {r.type==="time"?`${r.tf}-${r.tt}`:r.cond}</Tag>;})}</div>
-                  </div>
-                </div>
-                <div style={{ display:"flex",gap:8,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.b1}`,flexWrap:"wrap" }}>
-                  {du && <a href={du} download={`${qr.name||"qr"}.png`} style={{ ...btnP(),flex:mob?1:0,padding:"9px 14px",fontSize:13,textDecoration:"none" }}>↓ QR PNG</a>}
-                  {du && (
-                    <button
-                      onClick={()=>generatePrintableSign(qr, du, qr.name)}
-                      style={{ ...btnP(C.em),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}
-                    >
-                      🖨 Print Sign
-                    </button>
-                  )}
-                  <button onClick={()=>{setEd(qr);setModal(true);}} style={{ ...btnG(),flex:mob?1:0,padding:"9px 14px",fontSize:13 }}>Edit</button>
-                  <button onClick={()=>setCodes(codes.filter(x=>x.id!==qr.id))} style={{ padding:"9px 14px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",flex:mob?1:0,minHeight:44 }}>Delete</button>
-                </div>
-
-                {/* Print sign callout for new users */}
-                <div style={{ marginTop:12,background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap" }}>
-                  <span style={{ fontSize:18 }}>💡</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:12,fontWeight:600,color:C.em,marginBottom:2 }}>Display at your counter today</div>
-                    <div style={{ fontSize:11,color:C.t4 }}>Tap "Print Sign" to get a ready-to-print loyalty sign. Works at any printer — free.</div>
-                  </div>
-                  {du && <button onClick={()=>generatePrintableSign(qr, du, qr.name)} style={{ ...btnP(C.em),padding:"8px 14px",fontSize:12,whiteSpace:"nowrap" }}>Print now →</button>}
-                </div>
-              </div>
-            );
-          })
+          :codes.map(qr=>(
+            <QRCard key={qr.id} qr={qr} mob={mob}
+              onEdit={q=>{setEd(q);setModal(true);}}
+              onDelete={id=>setCodes(codes.filter(x=>x.id!==id))}/>
+          ))
         }
       </div>
       {modal && <QRModal init={ed} onSave={save} onClose={()=>{setModal(false);setEd(null);}}/>}
