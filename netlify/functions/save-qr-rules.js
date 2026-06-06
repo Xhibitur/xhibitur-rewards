@@ -1,6 +1,14 @@
 // netlify/functions/save-qr-rules.js
 // Saves a customer's QR routing rules to Cloudflare KV
-// Called automatically when a user creates or updates a QR code in the dashboard
+// Automatically fixes URLs and filters empty destinations
+
+// Auto-adds https:// if missing from a URL
+function fixUrl(url) {
+  if (!url || !url.trim()) return "";
+  const u = url.trim();
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return "https://" + u;
+}
 
 exports.handler = async (event) => {
   const headers = {
@@ -15,7 +23,6 @@ exports.handler = async (event) => {
   try {
     const { slug, name, destinations, fallback } = JSON.parse(event.body);
 
-    // Validate required fields
     if (!slug || !name) {
       return {
         statusCode: 400,
@@ -24,7 +31,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // Sanitize slug — lowercase, dashes only, max 50 chars
+    // Sanitize slug
     const cleanSlug = slug
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -35,17 +42,18 @@ exports.handler = async (event) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: "Invalid slug — use letters and numbers only" }),
+        body: JSON.stringify({ error: "Invalid slug" }),
       };
     }
 
-    // Build the KV value
-    const kvValue = JSON.stringify({
-      name,
-      fallback: fallback || "https://rewards.xhibitur.com",
-      destinations: (destinations || []).map(d => ({
+    // Fix fallback URL — default to check-in page if empty
+    const fixedFallback = fixUrl(fallback) || `https://rewards.xhibitur.com/#/checkin/${cleanSlug}`;
+
+    // Fix destination URLs and filter out empty ones
+    const fixedDestinations = (destinations || [])
+      .map(d => ({
         label: d.label || "",
-        url: d.url || "",
+        url: fixUrl(d.url),
         rules: (d.rules || []).map(r => ({
           type: r.type,
           condition: r.type === "time"
@@ -55,12 +63,18 @@ exports.handler = async (event) => {
           to: r.tt || "",
         }))
       }))
+      .filter(d => d.url); // remove destinations with no URL
+
+    const kvValue = JSON.stringify({
+      name,
+      fallback: fixedFallback,
+      destinations: fixedDestinations,
     });
 
     // Save to Cloudflare KV
-    const cfAccountId    = process.env.CF_ACCOUNT_ID;
-    const cfApiToken     = process.env.CF_API_TOKEN;
-    const cfKvNamespace  = process.env.CF_KV_NAMESPACE_ID;
+    const cfAccountId   = process.env.CF_ACCOUNT_ID;
+    const cfApiToken    = process.env.CF_API_TOKEN;
+    const cfKvNamespace = process.env.CF_KV_NAMESPACE_ID;
 
     if (!cfAccountId || !cfApiToken || !cfKvNamespace) {
       throw new Error("Missing Cloudflare environment variables");
@@ -84,8 +98,9 @@ exports.handler = async (event) => {
     }
 
     const qrUrl = `https://${cleanSlug}.qr.xhibitur.com`;
-
-    console.log(`QR rules saved for ${cleanSlug} → ${qrUrl}`);
+    console.log(`QR rules saved: ${cleanSlug} → ${qrUrl}`);
+    console.log(`Fallback: ${fixedFallback}`);
+    console.log(`Destinations: ${fixedDestinations.length}`);
 
     return {
       statusCode: 200,
