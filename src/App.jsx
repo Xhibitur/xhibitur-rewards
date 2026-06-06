@@ -1018,7 +1018,11 @@ function QRModal({ init,onSave,onClose }) {
                       {dests.length>1 && <button onClick={()=>rem(d.id)} style={{ background:"none",border:"none",color:C.t4,fontSize:22,cursor:"pointer",minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center" }}>×</button>}
                     </div>
                     <div style={{ padding:14,background:C.bg2,display:"flex",flexDirection:"column",gap:10 }}>
-                      <input value={d.url} onChange={e=>upd(d.id,{...d,url:e.target.value})} placeholder="https://destination-url.com" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                      <input value={d.url} onChange={e=>upd(d.id,{...d,url:e.target.value})}
+                        onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) upd(d.id,{...d,url:"https://"+v}); }}
+                        placeholder="https://destination-url.com" style={si}
+                        onFocus={e=>e.target.style.borderColor=C.vi}
+                        onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) upd(d.id,{...d,url:"https://"+v}); e.target.style.borderColor=C.b2; }}/>
                       {d.rules.map(r=>{
                         const rt=RT.find(x=>x.id===r.type);
                         return (
@@ -1046,7 +1050,11 @@ function QRModal({ init,onSave,onClose }) {
               </div>
               <div style={{ background:C.am+"0c",border:`1px solid ${C.am}22`,borderRadius:10,padding:14 }}>
                 <label style={{ ...lbl,color:C.am }}>Fallback URL — when no rules match</label>
-                <input value={fb} onChange={e=>setFb(e.target.value)} placeholder="https://yoursite.com" style={si} onFocus={e=>e.target.style.borderColor=C.am} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={fb} onChange={e=>setFb(e.target.value)}
+                  onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) setFb("https://"+v); }}
+                  placeholder="https://yoursite.com" style={si}
+                  onFocus={e=>e.target.style.borderColor=C.am}/>
+                <div style={{ fontSize:11,color:C.t4,marginTop:5 }}>If no rules match, customers go here. Leave blank to use your check-in page.</div>
               </div>
               <div>
                 <label style={lbl}>QR foreground color</label>
