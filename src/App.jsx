@@ -1796,22 +1796,53 @@ function CheckInPage() {
       const newStamps = current + 1;
 
       // Check tiers
-      if (tiers) {
+      if (tiers && tiers.length > 0) {
+        const maxTier = tiers[tiers.length - 1]; // Gold is the last tier
         const newlyUnlocked = tiers.find(t => t.stamps === newStamps);
+
         if (newlyUnlocked) {
-          localStorage.setItem(key, newStamps.toString());
-          localStorage.setItem(`${key}_last`, now.toString());
-          if (name) localStorage.setItem(`${key}_name`, name);
-          setStamps(newStamps);
-          setUnlockedTier(newlyUnlocked);
+          const isGold = newlyUnlocked.stamps === maxTier.stamps;
+
+          if (isGold) {
+            // Gold reached — generate redemption code, reset stamps, mark permanent Gold
+            const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+            localStorage.setItem(key, "0"); // reset to 0
+            localStorage.removeItem(`${key}_last`);
+            localStorage.setItem(`${key}_gold`, "true"); // permanent Gold status
+            setRedeemCode(code);
+            setStamps(0);
+            setUnlockedTier({ ...newlyUnlocked, redemptionCode: code });
+            setStep("tier");
+          } else {
+            // Bronze or Silver — save stamp count, show tier screen
+            localStorage.setItem(key, newStamps.toString());
+            localStorage.setItem(`${key}_last`, now.toString());
+            if (name) localStorage.setItem(`${key}_name`, name);
+            setStamps(newStamps);
+            setUnlockedTier(newlyUnlocked);
+            setStep("tier");
+          }
+          setBusy(false);
+          return;
+        }
+
+        // After Gold reset — check if they hit Gold again on next cycle
+        const isGoldAgain = localStorage.getItem(`${key}_gold`) === "true" && newStamps === maxTier.stamps;
+        if (isGoldAgain) {
+          const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+          localStorage.setItem(key, "0");
+          localStorage.removeItem(`${key}_last`);
+          setRedeemCode(code);
+          setStamps(0);
+          setUnlockedTier({ ...maxTier, redemptionCode: code, repeat: true });
           setStep("tier");
           setBusy(false);
           return;
         }
       }
 
-      // Standard stamp card
-      if (newStamps >= goal) {
+      // Standard stamp card (no tiers)
+      if (!tiers && newStamps >= goal) {
         const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
         localStorage.setItem(key, "0");
         localStorage.removeItem(`${key}_last`);
@@ -1922,6 +1953,14 @@ function CheckInPage() {
               </div>
             </div>
 
+            {/* Permanent Gold status badge */}
+            {localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_gold`)==="true" && (
+              <div style={{ background:C.vi+"18",border:`1px solid ${C.vi}30`,borderRadius:10,padding:"8px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:6,justifyContent:"center" }}>
+                <span style={{ fontSize:14 }}>🥇</span>
+                <span style={{ fontSize:12,fontWeight:700,color:C.vi }}>Gold Member</span>
+              </div>
+            )}
+
             {/* Referral share */}
             {refLink && (
               <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"14px 16px",marginBottom:16 }}>
@@ -1950,15 +1989,47 @@ function CheckInPage() {
             <div style={{ fontSize:48,marginBottom:12 }}>
               {unlockedTier.level==="Bronze"?"🥉":unlockedTier.level==="Silver"?"🥈":"🥇"}
             </div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{unlockedTier.level} achieved!</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>You've reached {unlockedTier.stamps} stamps</div>
-            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"16px",marginBottom:20 }}>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>
+              {unlockedTier.repeat ? "Gold again!" : `${unlockedTier.level} achieved!`}
+            </div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>
+              {unlockedTier.repeat
+                ? "You completed another full cycle — Gold status maintained!"
+                : `You've reached ${unlockedTier.stamps} stamps`}
+            </div>
+
+            {/* Reward */}
+            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"16px",marginBottom:unlockedTier.redemptionCode?16:20 }}>
               <div style={{ fontSize:12,color:C.t4,marginBottom:4 }}>YOUR REWARD</div>
               <div style={{ fontSize:18,fontWeight:800,color:C.vi }}>{unlockedTier.reward}</div>
-              <div style={{ fontSize:12,color:C.t4,marginTop:6 }}>Show this screen to redeem</div>
+              {!unlockedTier.redemptionCode && <div style={{ fontSize:12,color:C.t4,marginTop:6 }}>Show this screen to redeem</div>}
             </div>
-            <div style={{ fontSize:12,color:C.t4,marginBottom:16 }}>Keep earning stamps to reach the next tier!</div>
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Continue earning</button>
+
+            {/* Redemption code for Gold */}
+            {unlockedTier.redemptionCode && (
+              <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"16px",marginBottom:20 }}>
+                <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
+                <div style={{ fontSize:24,fontWeight:900,color:C.ok,letterSpacing:".1em",fontFamily:"DM Mono,monospace" }}>{unlockedTier.redemptionCode}</div>
+                <div style={{ fontSize:11,color:C.t4,marginTop:8 }}>Show this to the cashier · Your stamp card has reset</div>
+              </div>
+            )}
+
+            {/* Gold permanent status badge */}
+            {unlockedTier.level==="Gold" && (
+              <div style={{ background:C.vi+"18",border:`1px solid ${C.vi}30`,borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:8,justifyContent:"center" }}>
+                <span style={{ fontSize:16 }}>🥇</span>
+                <span style={{ fontSize:13,fontWeight:700,color:C.vi }}>Permanent Gold Member</span>
+              </div>
+            )}
+
+            <div style={{ fontSize:12,color:C.t4,marginBottom:16 }}>
+              {unlockedTier.level==="Gold"
+                ? "Your stamp card resets — keep visiting to earn Gold rewards every cycle!"
+                : "Keep earning stamps to reach the next tier!"}
+            </div>
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>
+              {unlockedTier.level==="Gold" ? "Start new cycle →" : "Continue earning →"}
+            </button>
           </div>
         )}
 
