@@ -84,7 +84,20 @@ function AuthProvider({ children }) {
   const signIn = async (em,pw) => {
     const f = DEMOS[em.toLowerCase()];
     if (!f||f.pw!==pw) throw new Error("Invalid email or password");
-    save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan:f.plan });
+    // Check Stripe directly for real plan status
+    let plan = f.plan;
+    try {
+      const res = await fetch("/.netlify/functions/check-plan", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ email: em.toLowerCase() }),
+      });
+      const data = await res.json();
+      if (data.plan) plan = data.plan;
+    } catch(e) {
+      console.log("Plan check failed, using default");
+    }
+    save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan });
   };
   const signUp = async (em,pw,name) => {
     if (!em||!pw||!name) throw new Error("All fields required");
@@ -412,11 +425,6 @@ function Login() {
   const go = async e => { e.preventDefault(); setErr(""); setBusy(true); try { await signIn(em,pw); nav("dashboard"); } catch(x){ setErr(x.message); } finally{ setBusy(false); } };
   return (
     <AuthShell title="Welcome back" sub="Sign in to your Xhibitur Rewards account">
-      <div style={{ background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:8,padding:"10px 14px",marginBottom:20 }}>
-        <p style={{ color:C.t4,fontSize:12,lineHeight:1.6,margin:0 }}>
-          <span style={{ color:C.viL,fontWeight:600 }}>Demo:</span> demo@xhibitur.com / demo1234 · trial@xhibitur.com / trial1234
-        </p>
-      </div>
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
         <div><label style={lbl}>Email</label><input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="you@business.com" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
         <div><label style={lbl}>Password</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
@@ -500,13 +508,13 @@ const FEATS = [
   { icon:"◈", title:"Live Analytics",      desc:"Scan volume, device split, redemptions and member growth in real time.", col:C.em },
   { icon:"⚡", title:"Win-Back Automation", desc:"Customers inactive 60+ days automatically get a custom offer. Runs itself 24/7.", col:C.cy },
   { icon:"📱", title:"Mobile Dashboard",   desc:"Manage everything from your phone. Built mobile-first for busy owners.", col:C.am },
-  { icon:"↗",  title:"One-Click Deploy",   desc:"Netlify, StackBlitz, Vercel. Cloudflare Workers powers live QR routing.", col:C.bl },
+  { icon:"🖨",  title:"Instant Print-Ready Sign",  desc:"Download a professional loyalty sign in seconds. Print at any printer and display at your counter today — no design skills needed.", col:C.bl },
 ];
 const ALL_FEATURES = [
   "Unlimited Smart QR codes","Unlimited Rewards programs","Unlimited monthly scans",
   "Full analytics dashboard","Win-back automation","Mobile-first dashboard",
   "All 10 smart rule types","Custom domain support","CSV data export",
-  "Auto-pilot templates","Priority email support","Cloudflare Worker deploy",
+  "Auto-pilot templates","Priority email support","Instant print-ready QR sign",
 ];
 
 function Landing() {
