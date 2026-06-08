@@ -680,10 +680,10 @@ function Landing() {
             <div style={{ width:52, height:52, borderRadius:14, background:C.vi+"18", border:`1px solid ${C.vi}25`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>📱</div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:mob?15:17, fontWeight:800, color:C.t1, marginBottom:5, letterSpacing:"-.02em" }}>
-                100% mobile. No app required.
+                No app to download. No account required.
               </div>
               <div style={{ fontSize:mob?13:14, color:C.t3, lineHeight:1.65 }}>
-                Xhibitur Rewards runs entirely in your phone's browser. Set up your QR codes, manage your rewards programs, view live analytics, and see who came back — all from the same device you already have in your pocket.
+                Xhibitur Rewards runs entirely through your customers' phone or web browser. Customers just scan and earn. For customers who want their stamps to follow them across devices they can optionally save their progress with their email.
               </div>
             </div>
             <button onClick={()=>nav("signup")} style={{ ...btnP(), fontSize:mob?14:15, padding:"12px 22px", whiteSpace:"nowrap", width:mob?"100%":"auto", boxShadow:`0 0 24px ${C.viGlo}` }}>
@@ -1698,6 +1698,9 @@ function AccountPage() {
               }
             </div>
           </div>
+          <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"13px 14px",fontSize:13,color:C.t4,lineHeight:1.65 }}>
+            <span style={{ color:C.viL,fontWeight:600 }}>🔒 How stamps work:</span> Customer stamps are stored privately on each customer's device by default — no account needed, no data collected. Customers who want to sync stamps across phones can optionally save their progress with their email.
+          </div>
         </div>
 
         <div style={{ ...card(),padding:mob?16:22,border:`1px solid ${C.err}1e` }}>
@@ -1735,6 +1738,11 @@ function CheckInPage() {
   const [refEnabled, setRefEnabled] = useState(false);
   const [refBonus, setRefBonus] = useState("1 bonus stamp");
   const [refLink, setRefLink] = useState("");
+  const [saveEmail, setSaveEmail] = useState("");
+  const [saveErr, setSaveErr] = useState("");
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [restoreCode, setRestoreCode] = useState("");
+  const [restoreInput, setRestoreInput] = useState("");
 
   // Load business info and reward settings from KV
   useEffect(() => {
@@ -1931,7 +1939,16 @@ function CheckInPage() {
                 {busy?"Checking in…":"Check in & earn stamp ✓"}
               </button>
             </form>
-            <p style={{ textAlign:"center",marginTop:14,fontSize:12,color:C.t4 }}>No app needed · Free to join</p>
+            <div style={{ marginTop:14,background:C.bg3,borderRadius:8,padding:"10px 12px" }}>
+              <div style={{ fontSize:11,color:C.t4,lineHeight:1.6,textAlign:"center" }}>
+                🔒 <strong style={{ color:C.t3 }}>Your privacy is protected.</strong> Stamps are stored privately on your device. No account required. No data collected.
+              </div>
+            </div>
+
+            {/* Restore stamps option */}
+            <button onClick={()=>setStep("restore")} style={{ width:"100%",marginTop:10,background:"none",border:"none",color:C.t4,fontSize:12,cursor:"pointer",padding:"6px",textDecoration:"underline" }}>
+              Have a restore code? Tap here
+            </button>
           </div>
         )}
 
@@ -1942,26 +1959,27 @@ function CheckInPage() {
             <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>
               {step==="welcome"?`Welcome${name?`, ${name}`:""}!`:"Stamp added!"}
             </div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>
               {step==="welcome"?"You've earned your first stamp!":"You now have"} {stamps} of {goal} stamps
             </div>
 
             {/* Stamp progress */}
-            <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginBottom:24 }}>
-              {Array.from({length:goal}).map((_,i)=>(
-                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>
-                  {i<stamps?"⭐":""}
+            <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:20 }}>
+              {Array.from({length:Math.min(goal,10)}).map((_,i)=>(
+                <div key={i} style={{ width:32,height:32,borderRadius:"50%",background:i<Math.min(stamps,10)?C.vi:C.bg3,border:`2px solid ${i<Math.min(stamps,10)?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>
+                  {i<Math.min(stamps,10)?"⭐":""}
                 </div>
               ))}
+              {goal>10 && <div style={{ fontSize:11,color:C.t4,width:"100%",marginTop:4 }}>{stamps} of {goal} total stamps</div>}
             </div>
 
-            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:20 }}>
+            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:16 }}>
               <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>
                 {goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!
               </div>
             </div>
 
-            {/* Permanent Gold status badge */}
+            {/* Gold status badge */}
             {localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_gold`)==="true" && (
               <div style={{ background:C.vi+"18",border:`1px solid ${C.vi}30`,borderRadius:10,padding:"8px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:6,justifyContent:"center" }}>
                 <span style={{ fontSize:14 }}>🥇</span>
@@ -1969,25 +1987,135 @@ function CheckInPage() {
               </div>
             )}
 
-            {/* Referral share */}
-            {refLink && (
-              <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"14px 16px",marginBottom:16 }}>
-                <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>🤝 Refer a friend — earn a bonus stamp!</div>
-                <div style={{ fontSize:12,color:C.t4,marginBottom:10 }}>Share your link. When a friend checks in for the first time you both earn {refBonus}.</div>
+            {/* Save progress */}
+            <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,padding:"14px",marginBottom:14,textAlign:"left" }}>
+              <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>💾 Save your progress</div>
+              <div style={{ fontSize:12,color:C.t4,marginBottom:10,lineHeight:1.6 }}>Stamps live on this device. Save them so you never lose your progress if you switch phones.</div>
+              <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                <button onClick={()=>setStep("save-email")} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>📧 Save with email — sync across devices</button>
                 <button onClick={()=>{
-                  if (navigator.share) {
-                    navigator.share({ title:`Join ${bizName} Rewards`, text:`Join me at ${bizName} — earn free rewards every visit!`, url:refLink });
-                  } else {
-                    navigator.clipboard.writeText(refLink);
-                    alert("Referral link copied!");
-                  }
-                }} style={{ ...btnP(C.vi,true),fontSize:13,padding:"10px" }}>
-                  Share referral link →
-                </button>
+                  const payload = `${email.toLowerCase()}:${slug}:${stamps}:${Date.now()}`;
+                  const code = btoa(payload).replace(/[+=\/]/g,"").slice(0,20).toUpperCase();
+                  localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_code`,code);
+                  setRestoreCode(code); setStep("show-code");
+                }} style={{ ...btnG(true),fontSize:13,padding:"9px" }}>🔑 Get a private backup code</button>
+              </div>
+            </div>
+
+            {/* Referral */}
+            {refLink && (
+              <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"12px",marginBottom:14,textAlign:"left" }}>
+                <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>🤝 Refer a friend — earn a bonus stamp!</div>
+                <div style={{ fontSize:12,color:C.t4,marginBottom:8 }}>Share your link. When a friend checks in for the first time you both earn {refBonus}.</div>
+                <button onClick={()=>{ if(navigator.share){navigator.share({title:`Join ${bizName} Rewards`,text:`Join me at ${bizName} — earn free rewards!`,url:refLink});}else{navigator.clipboard.writeText(refLink);alert("Referral link copied!");}}} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>Share referral link →</button>
               </div>
             )}
 
+            <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px",width:"100%" }}>Done for now</button>
+          </div>
+        )}
+
+        {/* STEP: Save with email */}
+        {step==="save-email" && (
+          <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40` }}>
+            <div style={{ textAlign:"center",marginBottom:20 }}>
+              <div style={{ fontSize:36,marginBottom:8 }}>📧</div>
+              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Save with email</div>
+              <div style={{ fontSize:13,color:C.t4,lineHeight:1.6 }}>We'll email you a restore code so your stamps follow you to any device.</div>
+            </div>
+            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+              <div>
+                <label style={lbl}>Your email</label>
+                <input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com"
+                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
+              <button onClick={async()=>{
+                if(!saveEmail){setSaveErr("Please enter your email.");return;}
+                setSaveBusy(true);setSaveErr("");
+                try{
+                  const res=await fetch("/.netlify/functions/save-stamps",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:saveEmail,slug,bizName,stamps,goal,reward})});
+                  const data=await res.json();
+                  if(data.success){localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_saved_email`,saveEmail);setRestoreCode(data.restoreCode);setStep("saved");}
+                  else setSaveErr("Something went wrong. Try again.");
+                }catch(e){setSaveErr("Something went wrong. Try again.");}
+                setSaveBusy(false);
+              }} disabled={saveBusy} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px",opacity:saveBusy?.7:1 }}>
+                {saveBusy?"Sending…":"Send restore code →"}
+              </button>
+              <button onClick={()=>setStep("stamped")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
+            </div>
+            <div style={{ marginTop:12,fontSize:11,color:C.t4,textAlign:"center",lineHeight:1.6 }}>🔒 We use your email only to send this code. We don't track visits or share your data.</div>
+          </div>
+        )}
+
+        {/* STEP: Show backup code */}
+        {step==="show-code" && (
+          <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40`,textAlign:"center" }}>
+            <div style={{ fontSize:36,marginBottom:12 }}>🔑</div>
+            <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:8 }}>Your backup code</div>
+            <div style={{ fontSize:13,color:C.t4,marginBottom:20,lineHeight:1.6 }}>Save this somewhere safe. Use it to restore your stamps on any device.</div>
+            <div style={{ background:C.bg3,border:`2px dashed ${C.vi}`,borderRadius:12,padding:"20px",marginBottom:20 }}>
+              <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>YOUR BACKUP CODE</div>
+              <div style={{ fontSize:22,fontWeight:900,color:C.vi,letterSpacing:".08em",fontFamily:"DM Mono,monospace" }}>{restoreCode}</div>
+            </div>
+            <button onClick={()=>{navigator.clipboard.writeText(restoreCode);alert("Code copied!");}} style={{ ...btnP(C.vi,true),fontSize:13,padding:"11px",marginBottom:10 }}>Copy code</button>
+            <button onClick={()=>setStep("stamped")} style={{ ...btnG(true),fontSize:13,padding:"10px",width:"100%" }}>Done</button>
+          </div>
+        )}
+
+        {/* STEP: Saved confirmation */}
+        {step==="saved" && (
+          <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center" }}>
+            <div style={{ fontSize:48,marginBottom:12 }}>✅</div>
+            <div style={{ fontSize:20,fontWeight:800,color:C.t1,marginBottom:8 }}>Stamps saved!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20,lineHeight:1.6 }}>We emailed your restore code to <strong style={{ color:C.t2 }}>{saveEmail}</strong>. Check your inbox.</div>
+            <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"14px",marginBottom:20,textAlign:"left" }}>
+              <div style={{ fontSize:12,color:C.t4,lineHeight:1.7 }}><strong style={{ color:C.t2 }}>To restore on a new device:</strong><br/>Visit this loyalty page, tap "Have a restore code?" and enter the code from your email.</div>
+            </div>
             <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Done</button>
+          </div>
+        )}
+
+        {/* STEP: Restore stamps */}
+        {step==="restore" && (
+          <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
+            <div style={{ textAlign:"center",marginBottom:20 }}>
+              <div style={{ fontSize:36,marginBottom:8 }}>🔄</div>
+              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Restore your stamps</div>
+              <div style={{ fontSize:13,color:C.t4 }}>Enter your email and restore code.</div>
+            </div>
+            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+              <div>
+                <label style={lbl}>Your email</label>
+                <input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com"
+                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              <div>
+                <label style={lbl}>Restore code</label>
+                <input value={restoreInput} onChange={e=>setRestoreInput(e.target.value.toUpperCase())} placeholder="XXXXXXXXXXXXXXXXXXXX"
+                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}`,fontFamily:"DM Mono,monospace",letterSpacing:".04em" }}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
+              <button onClick={()=>{
+                if(!saveEmail||!restoreInput){setSaveErr("Please fill in both fields.");return;}
+                try{
+                  const padded = restoreInput.toLowerCase() + "=".repeat((4-restoreInput.length%4)%4);
+                  const decoded = atob(padded);
+                  const parts = decoded.split(":");
+                  if(parts[0]===saveEmail.toLowerCase()&&parts[1]===slug){
+                    const key=`stamps_${slug}_${saveEmail.toLowerCase()}`;
+                    localStorage.setItem(key,parts[2]||"0");
+                    setEmail(saveEmail); setStamps(parseInt(parts[2])||0);
+                    setSaveErr(""); setStep("stamped");
+                  } else setSaveErr("Code doesn't match this email. Please check and try again.");
+                }catch(e){setSaveErr("Invalid restore code. Please check and try again.");}
+              }} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Restore stamps →</button>
+              <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
+            </div>
           </div>
         )}
 
