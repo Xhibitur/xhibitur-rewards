@@ -950,22 +950,41 @@ const mkR=(t="device")=>({id:gid(),type:t,cond:RO[t]?.[0]||"",tf:"09:00",tt:"17:
 const mkD=()=>({id:gid(),label:"",url:"",rules:[mkR()]});
 const PILOTS={restaurant:[{label:"Lunch",url:"",rules:[{...mkR("time"),tf:"11:00",tt:"14:30"}]},{label:"Dinner",url:"",rules:[{...mkR("time"),tf:"17:00",tt:"22:00"}]},{label:"Brunch",url:"",rules:[{...mkR("day"),cond:"Weekends"}]}],app:[{label:"iOS",url:"",rules:[{...mkR("device"),cond:"iPhone / iOS"}]},{label:"Android",url:"",rules:[{...mkR("device"),cond:"Android"}]},{label:"Desktop",url:"",rules:[{...mkR("device"),cond:"Desktop / PC"}]}],event:[{label:"Tickets",url:"",rules:[{...mkR("event"),cond:"Before event"}]},{label:"Day-Of",url:"",rules:[{...mkR("event"),cond:"Day of event"}]},{label:"Live",url:"",rules:[{...mkR("event"),cond:"During event"}]},{label:"Recap",url:"",rules:[{...mkR("event"),cond:"After event"}]}]};
 
-function QRModal({ init,onSave,onClose }) {
+function QRModal({ init, onSave, onClose, programs=[] }) {
   const [name,setName]=useState(init?.name||""); const [wurl,setWurl]=useState(init?.workerUrl||"");
   const [dests,setDests]=useState(init?.destinations||[mkD()]); const [fb,setFb]=useState(init?.fallback||"");
   const [fg,setFg]=useState(init?.fg||C.t1); const [tab,setTab]=useState("build"); const [png,setPng]=useState(null);
   const [saving,setSaving]=useState(false);
+  const [linkedProgram,setLinkedProgram]=useState(init?.linkedProgram||"");
 
   const handleSave = async () => {
     if (!name) return;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
     const autoUrl = `https://${slug}.qr.xhibitur.com`;
+    const autoFallback = fb || `https://rewards.xhibitur.com/#/checkin/${slug}`;
+
+    // Get linked program settings
+    const prog = programs.find(p=>p.id===linkedProgram);
+    const rewardSettings = prog ? {
+      goal: prog.cfg?.stampsRequired || 10,
+      reward: prog.cfg?.reward || "Free item",
+      programName: prog.name,
+    } : { goal: 10, reward: "Free item", programName: "" };
+
     setSaving(true);
     try {
       const res = await fetch("/.netlify/functions/save-qr-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, name, destinations: dests, fallback: fb }),
+        body: JSON.stringify({
+          slug,
+          name,
+          destinations: dests,
+          fallback: autoFallback,
+          rewardGoal: rewardSettings.goal,
+          rewardName: rewardSettings.reward,
+          programName: rewardSettings.programName,
+        }),
       });
       const data = await res.json();
       if (!data.success) console.error("KV save error:", data.error);
@@ -973,7 +992,7 @@ function QRModal({ init,onSave,onClose }) {
       console.error("KV save failed:", e);
     }
     setSaving(false);
-    onSave({ id: init?.id || gid(), name, workerUrl: autoUrl, destinations: dests, fallback: fb, fg });
+    onSave({ id: init?.id || gid(), name, workerUrl: autoUrl, destinations: dests, fallback: autoFallback, fg, linkedProgram });
   };
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
@@ -1005,6 +1024,31 @@ function QRModal({ init,onSave,onClose }) {
               <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px" }}>
                 <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
                 <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
+              </div>
+
+              {/* Link to rewards program */}
+              <div>
+                <label style={lbl}>Link to rewards program</label>
+                <select value={linkedProgram} onChange={e=>setLinkedProgram(e.target.value)}
+                  style={{ ...si,width:"100%",color:linkedProgram?C.t1:C.t4 }}>
+                  <option value="">— No program linked (default: 10 stamps, Free item) —</option>
+                  {programs.filter(p=>p.type==="stamps").map(p=>(
+                    <option key={p.id} value={p.id}>{p.name} — {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}</option>
+                  ))}
+                </select>
+                {linkedProgram && (()=>{
+                  const p = programs.find(x=>x.id===linkedProgram);
+                  return p ? (
+                    <div style={{ fontSize:11,color:C.vi,marginTop:6 }}>
+                      ✓ Check-in page will show: {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}
+                    </div>
+                  ) : null;
+                })()}
+                {programs.filter(p=>p.type==="stamps").length===0 && (
+                  <div style={{ fontSize:11,color:C.t4,marginTop:6 }}>
+                    Create a Stamp Card program in the Rewards tab first to link it here.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={lbl}>Quick-start templates</label>
@@ -1274,8 +1318,13 @@ function QRCard({ qr, onEdit, onDelete, mob }) {
   );
 }
 
+// ── Shared Programs Store ─────────────────────────────────────────────────────
+const ProgramsCtx = createContext([]);
+const usePrograms = () => useContext(ProgramsCtx);
+
 function QRPage() {
   const { nav } = useNav(); const w=useW(); const mob=w<640;
+  const programs = usePrograms();
   const [codes,setCodes]=useState([
     { id:"1",name:"Summer Menu 2026",workerUrl:"https://summer-menu.workers.dev",destinations:[{id:"a",label:"Lunch",url:"https://example.com/lunch",rules:[{id:"r1",type:"time",tf:"11:00",tt:"14:30",cond:""}]}],fallback:"https://example.com",fg:C.vi },
     { id:"2",name:"App Download QR",workerUrl:"https://app-dl.workers.dev",destinations:[{id:"b",label:"iOS",url:"https://apps.apple.com",rules:[{id:"r2",type:"device",cond:"iPhone / iOS",tf:"09:00",tt:"17:00"}]}],fallback:"https://example.com",fg:C.t1 },
@@ -1296,7 +1345,7 @@ function QRPage() {
           ))
         }
       </div>
-      {modal && <QRModal init={ed} onSave={save} onClose={()=>{setModal(false);setEd(null);}}/>}
+      {modal && <QRModal init={ed} onSave={save} programs={programs} onClose={()=>{setModal(false);setEd(null);}}/>}
     </DashShell>
   );
 }
@@ -1354,9 +1403,11 @@ function RwdModal({ init,onSave,onClose }) {
   );
 }
 
-function RewardsPage() {
+function RewardsPage({ programs, setPrograms }) {
+  const progs = programs || DEMO_P;
+  const setProgs = setPrograms || (() => {});
   const { nav } = useNav(); const w=useW(); const mob=w<640;
-  const [progs,setProgs]=useState(DEMO_P); const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
+  const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
   const save=p=>{ if(ed)setProgs(progs.map(x=>x.id===p.id?p:x));else setProgs([...progs,p]); setModal(false);setEd(null); };
   return (
     <DashShell>
@@ -1528,13 +1579,19 @@ function CheckInPage() {
   const [err, setErr] = useState("");
   const [redeemCode, setRedeemCode] = useState("");
 
-  // Load business info from KV via a simple fetch
+  // Load business info and reward settings from KV
   useEffect(() => {
     if (!slug) return;
-    fetch(`https://${slug}.qr.xhibitur.com`)
-      .catch(()=>{});
-    // Business name is derived from slug for now
     setBizName(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+    // Fetch reward settings from our Netlify function
+    fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if (data.name) setBizName(data.name);
+        if (data.rewardGoal) setGoal(data.rewardGoal);
+        if (data.rewardName) setReward(data.rewardName);
+      })
+      .catch(()=>{});
   },[slug]);
 
   const handleCheckin = async e => {
@@ -1868,6 +1925,8 @@ const PROTECTED = ["dashboard","dashboard/qr","dashboard/rewards","dashboard/ana
 
 function AppCore() {
   const { user,loading } = useAuth(); const { page,nav } = useNav();
+  const [programs,setPrograms] = useState(DEMO_P);
+
   useEffect(() => {
     if (loading) return;
     if (!user && PROTECTED.includes(page)) nav("login");
@@ -1888,11 +1947,18 @@ function AppCore() {
 
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
-    dashboard:<DashHome/>, "dashboard/qr":<QRPage/>, "dashboard/rewards":<RewardsPage/>,
-    "dashboard/analytics":<AnalyticsPage/>, "dashboard/account":<AccountPage/>,
+    dashboard:<DashHome/>,
+    "dashboard/qr":<QRPage/>,
+    "dashboard/rewards":<RewardsPage programs={programs} setPrograms={setPrograms}/>,
+    "dashboard/analytics":<AnalyticsPage/>,
+    "dashboard/account":<AccountPage/>,
     "dashboard/stickers":<StickerOrderPage/>,
   };
-  return views[page] || <Landing/>;
+  return (
+    <ProgramsCtx.Provider value={programs}>
+      {views[page] || <Landing/>}
+    </ProgramsCtx.Provider>
+  );
 }
 
 class ErrorBoundary extends React.Component {
