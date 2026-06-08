@@ -1,8 +1,4 @@
 // netlify/functions/save-qr-rules.js
-// Saves a customer's QR routing rules to Cloudflare KV
-// Automatically fixes URLs and filters empty destinations
-
-// Auto-adds https:// if missing from a URL
 function fixUrl(url) {
   if (!url || !url.trim()) return "";
   const u = url.trim();
@@ -15,109 +11,47 @@ exports.handler = async (event) => {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
   };
-
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "" };
-  }
+  if (event.httpMethod === "OPTIONS") return { statusCode:200, headers, body:"" };
 
   try {
-    const { slug, name, destinations, fallback } = JSON.parse(event.body);
+    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName } = JSON.parse(event.body);
 
-    if (!slug || !name) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Slug and name are required" }),
-      };
-    }
+    if (!slug || !name) return { statusCode:400, headers, body: JSON.stringify({ error:"Slug and name required" }) };
 
-    // Sanitize slug
-    const cleanSlug = slug
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 50);
+    const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
+    if (!cleanSlug) return { statusCode:400, headers, body: JSON.stringify({ error:"Invalid slug" }) };
 
-    if (!cleanSlug) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Invalid slug" }),
-      };
-    }
-
-    // Fix fallback URL — default to check-in page if empty
     const fixedFallback = fixUrl(fallback) || `https://rewards.xhibitur.com/#/checkin/${cleanSlug}`;
 
-    // Fix destination URLs and filter out empty ones
-    const fixedDestinations = (destinations || [])
-      .map(d => ({
-        label: d.label || "",
-        url: fixUrl(d.url),
-        rules: (d.rules || []).map(r => ({
-          type: r.type,
-          condition: r.type === "time"
-            ? `${r.tf || "09:00"}-${r.tt || "17:00"}`
-            : r.cond || "",
-          from: r.tf || "",
-          to: r.tt || "",
-        }))
-      }))
-      .filter(d => d.url); // remove destinations with no URL
+    const fixedDestinations = (destinations||[])
+      .map(d=>({ label:d.label||"", url:fixUrl(d.url), rules:(d.rules||[]).map(r=>({ type:r.type, condition:r.type==="time"?`${r.tf||"09:00"}-${r.tt||"17:00"}`:r.cond||"", from:r.tf||"", to:r.tt||"" })) }))
+      .filter(d=>d.url);
 
     const kvValue = JSON.stringify({
       name,
       fallback: fixedFallback,
       destinations: fixedDestinations,
+      rewardGoal: rewardGoal || 10,
+      rewardName: rewardName || "Free item",
+      programName: programName || "",
     });
 
-    // Save to Cloudflare KV
-    const cfAccountId   = process.env.CF_ACCOUNT_ID;
-    const cfApiToken    = process.env.CF_API_TOKEN;
-    const cfKvNamespace = process.env.CF_KV_NAMESPACE_ID;
-
-    if (!cfAccountId || !cfApiToken || !cfKvNamespace) {
-      throw new Error("Missing Cloudflare environment variables");
-    }
-
-    const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/storage/kv/namespaces/${cfKvNamespace}/values/${cleanSlug}`;
+    const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${cleanSlug}`;
 
     const cfRes = await fetch(cfUrl, {
-      method: "PUT",
-      headers: {
-        "Authorization": `Bearer ${cfApiToken}`,
-        "Content-Type": "text/plain",
-      },
+      method:"PUT",
+      headers:{ "Authorization":`Bearer ${process.env.CF_API_TOKEN}`, "Content-Type":"text/plain" },
       body: kvValue,
     });
 
-    if (!cfRes.ok) {
-      const errText = await cfRes.text();
-      console.log("Cloudflare KV error:", errText);
-      throw new Error(`Cloudflare KV error: ${cfRes.status}`);
-    }
+    if (!cfRes.ok) throw new Error(`Cloudflare KV error: ${cfRes.status}`);
 
-    const qrUrl = `https://${cleanSlug}.qr.xhibitur.com`;
-    console.log(`QR rules saved: ${cleanSlug} → ${qrUrl}`);
-    console.log(`Fallback: ${fixedFallback}`);
-    console.log(`Destinations: ${fixedDestinations.length}`);
+    console.log(`Saved: ${cleanSlug} | Goal: ${rewardGoal} stamps | Reward: ${rewardName}`);
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        slug: cleanSlug,
-        url: qrUrl,
-      }),
-    };
+    return { statusCode:200, headers, body: JSON.stringify({ success:true, slug:cleanSlug, url:`https://${cleanSlug}.qr.xhibitur.com` }) };
 
-  } catch (err) {
+  } catch(err) {
     console.log("save-qr-rules error:", err.message);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode:500, headers, body: JSON.stringify({ error:err.message }) };
   }
 };
