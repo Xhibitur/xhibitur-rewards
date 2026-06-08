@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode:200, headers, body:"" };
 
   try {
-    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName } = JSON.parse(event.body);
+    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName, tiers, refEnabled, refBonus } = JSON.parse(event.body);
 
     if (!slug || !name) return { statusCode:400, headers, body: JSON.stringify({ error:"Slug and name required" }) };
 
@@ -34,6 +34,9 @@ exports.handler = async (event) => {
       rewardGoal: rewardGoal || 10,
       rewardName: rewardName || "Free item",
       programName: programName || "",
+      tiers: tiers || null,
+      refEnabled: refEnabled || false,
+      refBonus: refBonus || "1 bonus stamp",
     });
 
     const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${cleanSlug}`;
