@@ -1351,48 +1351,170 @@ function QRPage() {
 }
 
 // ── Rewards Page ──────────────────────────────────────────────────────────────
-const RWD=[{id:"points",icon:"🪙",lb:"Points",desc:"Earn points per purchase."},{id:"stamps",icon:"🎯",lb:"Stamp Card",desc:"Buy X get one free."},{id:"tiers",icon:"👑",lb:"Tiers",desc:"Bronze, Silver, Gold."},{id:"referral",icon:"🤝",lb:"Referral",desc:"Earn for referring."},{id:"cashback",icon:"💵",lb:"Cashback",desc:"Earn % spend back."}];
-const RPAL=[C.am,C.vi,C.cy,C.em,C.fu];
-const DEMO_P=[{id:"1",name:"Coffee Loyalty",type:"stamps",active:true,members:312,redemptions:47,scans:1284,cfg:{stampsRequired:10,reward:"Free coffee"},col:C.am},{id:"2",name:"VIP Points Club",type:"points",active:true,members:89,redemptions:12,scans:445,cfg:{pointsPerDollar:10,redeemRate:"100 pts = $1 off"},col:C.vi}];
+const RWD = [
+  { id:"stamps",   icon:"🎯", lb:"Stamp Card",     desc:"Scan to earn stamps. Redeem at goal." },
+  { id:"tiers",    icon:"👑", lb:"Loyalty Tiers",  desc:"Bronze, Silver, Gold — stamp milestones." },
+  { id:"referral", icon:"🤝", lb:"Referral",        desc:"Share a link. Friend joins. Both earn." },
+];
+const RPAL=[C.am,C.vi,C.cy];
+const DEMO_P=[
+  { id:"1",name:"Coffee Loyalty",type:"stamps",active:true,members:312,redemptions:47,scans:1284,cfg:{ stampsRequired:10,reward:"Free coffee",winbackDays:60,winbackOffer:"We miss you — come back for a free drink",referrals:false },col:C.am },
+];
 
 function RwdModal({ init,onSave,onClose }) {
-  const [name,setName]=useState(init?.name||""); const [type,setType]=useState(init?.type||"stamps");
-  const [sr,setSr]=useState(init?.cfg?.stampsRequired||10); const [rw,setRw]=useState(init?.cfg?.reward||"Free item");
-  const [ppd,setPpd]=useState(init?.cfg?.pointsPerDollar||10); const [rr,setRr]=useState(init?.cfg?.redeemRate||"100 pts = $1 off");
-  const [wbd,setWbd]=useState(60); const [wbo,setWbo]=useState("We miss you — 20% off your next visit");
+  const [name,setName]   = useState(init?.name||"");
+  const [type,setType]   = useState(init?.type||"stamps");
   const w=useW(); const mob=w<640;
   const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
-  const save=()=>{const cfg=type==="stamps"?{stampsRequired:sr,reward:rw}:type==="points"?{pointsPerDollar:ppd,redeemRate:rr}:{};onSave({id:init?.id||gid(),name,type,active:true,members:init?.members||0,redemptions:init?.redemptions||0,scans:init?.scans||0,cfg:{...cfg,winbackDays:wbd,winbackOffer:wbo},col:RPAL[RWD.findIndex(x=>x.id===type)%5]||C.vi});};
+
+  // Stamp Card state
+  const [sr,setSr]   = useState(init?.cfg?.stampsRequired||10);
+  const [rw,setRw]   = useState(init?.cfg?.reward||"Free item");
+  const [wbd,setWbd] = useState(init?.cfg?.winbackDays||60);
+  const [wbo,setWbo] = useState(init?.cfg?.winbackOffer||"We miss you — come back for a free visit");
+
+  // Tiers state
+  const [t1stamps,setT1stamps] = useState(init?.cfg?.tiers?.[0]?.stamps||5);
+  const [t1reward,setT1reward] = useState(init?.cfg?.tiers?.[0]?.reward||"Free drink upgrade");
+  const [t2stamps,setT2stamps] = useState(init?.cfg?.tiers?.[1]?.stamps||15);
+  const [t2reward,setT2reward] = useState(init?.cfg?.tiers?.[1]?.reward||"20% off any purchase");
+  const [t3stamps,setT3stamps] = useState(init?.cfg?.tiers?.[2]?.stamps||30);
+  const [t3reward,setT3reward] = useState(init?.cfg?.tiers?.[2]?.reward||"Free meal or service");
+
+  // Referral state
+  const [refReward,setRefReward] = useState(init?.cfg?.refReward||"1 bonus stamp");
+  const [refFriendReward,setRefFriendReward] = useState(init?.cfg?.refFriendReward||"1 bonus stamp");
+
+  const save = () => {
+    let cfg = {};
+    if (type==="stamps") {
+      cfg = { stampsRequired:sr, reward:rw, winbackDays:wbd, winbackOffer:wbo };
+    } else if (type==="tiers") {
+      cfg = {
+        tiers:[
+          { level:"Bronze", stamps:t1stamps, reward:t1reward, color:C.am },
+          { level:"Silver", stamps:t2stamps, reward:t2reward, color:C.t3 },
+          { level:"Gold",   stamps:t3stamps, reward:t3reward, color:C.vi },
+        ],
+        winbackDays:wbd, winbackOffer:wbo,
+      };
+    } else if (type==="referral") {
+      cfg = { refReward, refFriendReward, winbackDays:wbd, winbackOffer:wbo };
+    }
+    onSave({
+      id:init?.id||gid(), name, type, active:true,
+      members:init?.members||0, redemptions:init?.redemptions||0, scans:init?.scans||0,
+      cfg, col:RPAL[RWD.findIndex(x=>x.id===type)%3]||C.vi,
+    });
+  };
+
   return (
     <div style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.85)",backdropFilter:"blur(8px)",display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20 }}>
-      <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:mob?"20px 20px 0 0":18,width:"100%",maxWidth:mob?undefined:540,maxHeight:mob?"92vh":"88vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.8)",animation:mob?"sheetUp .3s ease":"fadeUp .2s ease" }}>
+      <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:mob?"20px 20px 0 0":18,width:"100%",maxWidth:mob?undefined:540,maxHeight:mob?"92vh":"90vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.8)",animation:mob?"sheetUp .3s ease":"fadeUp .2s ease" }}>
         <div style={{ padding:"16px 18px",background:C.bg3,borderBottom:`1px solid ${C.b1}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <span style={{ color:C.t1,fontWeight:700,fontSize:15 }}>{init?"Edit Program":"New Rewards Program"}</span>
           <button onClick={onClose} style={{ background:C.bg4,border:`1px solid ${C.b3}`,color:C.t4,width:36,height:36,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>×</button>
         </div>
         <div style={{ flex:1,overflowY:"auto",padding:mob?16:20,display:"flex",flexDirection:"column",gap:16,WebkitOverflowScrolling:"touch" }}>
-          <div><label style={lbl}>Program name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Coffee Loyalty Club" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+
+          {/* Program name */}
           <div>
-            <label style={lbl}>Reward type</label>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-              {RWD.map(rt=><button key={rt.id} onClick={()=>setType(rt.id)} style={{ padding:"12px",borderRadius:10,cursor:"pointer",border:`1px solid ${type===rt.id?C.vi:C.b2}`,background:type===rt.id?C.viDim:C.bg3,textAlign:"left",transition:"all .12s",minHeight:76 }}>
-                <div style={{ fontSize:20,marginBottom:5 }}>{rt.icon}</div>
-                <div style={{ fontSize:13,fontWeight:600,color:C.t1 }}>{rt.lb}</div>
-                <div style={{ fontSize:11,color:C.t4,marginTop:2 }}>{rt.desc}</div>
-              </button>)}
+            <label style={lbl}>Program name</label>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Coffee Loyalty Club" style={si}
+              onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+          </div>
+
+          {/* Program type */}
+          <div>
+            <label style={lbl}>Program type</label>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
+              {RWD.map(rt=>(
+                <button key={rt.id} onClick={()=>setType(rt.id)} style={{ padding:"12px 8px",borderRadius:10,cursor:"pointer",border:`2px solid ${type===rt.id?C.vi:C.b2}`,background:type===rt.id?C.viDim:C.bg3,textAlign:"center",transition:"all .12s" }}>
+                  <div style={{ fontSize:22,marginBottom:4 }}>{rt.icon}</div>
+                  <div style={{ fontSize:12,fontWeight:700,color:type===rt.id?C.vi:C.t1 }}>{rt.lb}</div>
+                </button>
+              ))}
             </div>
           </div>
-          {type==="stamps" && <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}><div><label style={lbl}>Stamps required</label><input type="number" value={sr} onChange={e=>setSr(+e.target.value)} min={2} max={50} style={si}/></div><div><label style={lbl}>Reward earned</label><input value={rw} onChange={e=>setRw(e.target.value)} placeholder="Free coffee" style={si}/></div></div>}
-          {type==="points" && <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}><div><label style={lbl}>Points per $1 spent</label><input type="number" value={ppd} onChange={e=>setPpd(+e.target.value)} min={1} style={si}/></div><div><label style={lbl}>Redemption rate</label><input value={rr} onChange={e=>setRr(e.target.value)} placeholder="100 pts = $1 off" style={si}/></div></div>}
+
+          {/* ── Stamp Card ── */}
+          {type==="stamps" && (
+            <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}>
+              <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>STAMP CARD SETTINGS</div>
+              <div>
+                <label style={lbl}>Stamps required for reward</label>
+                <input type="number" value={sr} onChange={e=>setSr(+e.target.value)} min={1} max={50} style={si}/>
+              </div>
+              <div>
+                <label style={lbl}>Reward earned</label>
+                <input value={rw} onChange={e=>setRw(e.target.value)} placeholder="Free coffee" style={si}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+            </div>
+          )}
+
+          {/* ── Loyalty Tiers ── */}
+          {type==="tiers" && (
+            <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>TIER MILESTONES — stamps accumulate forever</div>
+              {[
+                { lb:"🥉 Bronze", stamps:t1stamps, setStamps:setT1stamps, reward:t1reward, setReward:setT1reward, color:C.am },
+                { lb:"🥈 Silver", stamps:t2stamps, setStamps:setT2stamps, reward:t2reward, setReward:setT2reward, color:C.t3 },
+                { lb:"🥇 Gold",   stamps:t3stamps, setStamps:setT3stamps, reward:t3reward, setReward:setT3reward, color:C.vi },
+              ].map(t=>(
+                <div key={t.lb} style={{ background:C.bg3,borderRadius:10,padding:12,borderLeft:`3px solid ${t.color}` }}>
+                  <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:10 }}>{t.lb}</div>
+                  <div style={{ display:"grid",gridTemplateColumns:"80px 1fr",gap:8 }}>
+                    <div>
+                      <label style={lbl}>Stamps</label>
+                      <input type="number" value={t.stamps} onChange={e=>t.setStamps(+e.target.value)} min={1} style={si}/>
+                    </div>
+                    <div>
+                      <label style={lbl}>Reward</label>
+                      <input value={t.reward} onChange={e=>t.setReward(e.target.value)} placeholder="Reward at this tier" style={si}
+                        onFocus={e=>e.target.style.borderColor=t.color} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.t4 }}>
+                💡 Stamps accumulate across all visits — customers never reset. Each milestone reward fires once when reached.
+              </div>
+            </div>
+          )}
+
+          {/* ── Referral ── */}
+          {type==="referral" && (
+            <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}>
+              <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>REFERRAL SETTINGS</div>
+              <div>
+                <label style={lbl}>Reward for the person who refers</label>
+                <input value={refReward} onChange={e=>setRefReward(e.target.value)} placeholder="1 bonus stamp" style={si}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              <div>
+                <label style={lbl}>Reward for the new friend who joins</label>
+                <input value={refFriendReward} onChange={e=>setRefFriendReward(e.target.value)} placeholder="1 bonus stamp" style={si}
+                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.t4 }}>
+                💡 After checking in, customers get a unique referral link to share. When their friend checks in for the first time, both earn their reward automatically.
+              </div>
+            </div>
+          )}
+
+          {/* Win-back rule — shown for all types */}
           <div style={{ background:C.am+"0c",border:`1px solid ${C.am}22`,borderRadius:10,padding:14 }}>
-            <label style={{ ...lbl,color:C.am }}>⚡ Auto win-back rule</label>
+            <label style={{ ...lbl,color:C.am }}>⚡ Win-back rule (all program types)</label>
             <div style={{ display:"flex",gap:10,marginBottom:10,alignItems:"center",flexWrap:"wrap" }}>
               <span style={{ fontSize:13,color:C.t4 }}>If inactive for</span>
               <input type="number" value={wbd} onChange={e=>setWbd(+e.target.value)} min={7} style={{...si,width:70}}/>
-              <span style={{ fontSize:13,color:C.t4 }}>days, show:</span>
+              <span style={{ fontSize:13,color:C.t4 }}>days, send offer:</span>
             </div>
-            <input value={wbo} onChange={e=>setWbo(e.target.value)} placeholder="We miss you — 20% off" style={si} onFocus={e=>e.target.style.borderColor=C.am} onBlur={e=>e.target.style.borderColor=C.b2}/>
+            <input value={wbo} onChange={e=>setWbo(e.target.value)} placeholder="We miss you — 20% off your next visit" style={si}
+              onFocus={e=>e.target.style.borderColor=C.am} onBlur={e=>e.target.style.borderColor=C.b2}/>
           </div>
+
         </div>
         <div style={{ padding:"14px 18px",borderTop:`1px solid ${C.b1}`,display:"flex",gap:10,background:C.bg3,flexShrink:0 }}>
           <button onClick={onClose} style={{ ...btnG(mob),flex:mob?1:0,fontSize:14,padding:"10px 18px" }}>Cancel</button>
@@ -1405,10 +1527,20 @@ function RwdModal({ init,onSave,onClose }) {
 
 function RewardsPage({ programs, setPrograms }) {
   const progs = programs || DEMO_P;
-  const setProgs = setPrograms || (() => {});
+  const setProgs = setPrograms || (()=>{});
   const { nav } = useNav(); const w=useW(); const mob=w<640;
   const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
   const save=p=>{ if(ed)setProgs(progs.map(x=>x.id===p.id?p:x));else setProgs([...progs,p]); setModal(false);setEd(null); };
+
+  const typeLabel = p => {
+    if (p.type==="stamps") return `${p.cfg?.stampsRequired} stamps → ${p.cfg?.reward}`;
+    if (p.type==="tiers") return `${p.cfg?.tiers?.length||3} tiers — ${p.cfg?.tiers?.map(t=>t.level).join(", ")}`;
+    if (p.type==="referral") return `Referrer gets: ${p.cfg?.refReward}`;
+    return "";
+  };
+
+  const typeIcon = { stamps:"🎯", tiers:"👑", referral:"🤝" };
+
   return (
     <DashShell>
       <PgHead title="Rewards Programs" sub="Build loyalty and bring customers back."
@@ -1416,37 +1548,49 @@ function RewardsPage({ programs, setPrograms }) {
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {progs.length===0
           ?<Empty icon="◆" title="No rewards programs yet" body="Create your first loyalty program." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first program</button>}/>
-          :progs.map(p=>{
-            const rt=RWD.find(x=>x.id===p.type);
-            return (
-              <div key={p.id} style={{ ...card(),padding:mob?14:18 }}>
-                <div style={{ display:"flex",alignItems:"flex-start",gap:12,marginBottom:14 }}>
-                  <div style={{ width:44,height:44,borderRadius:10,background:p.col+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${p.col}22` }}>{rt?.icon}</div>
-                  <div style={{ flex:1,minWidth:0 }}>
-                    <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap" }}>
-                      <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>{p.name}</span>
-                      <Tag color={p.active?C.ok:C.t4} dot>{p.active?"Active":"Paused"}</Tag>
-                      <Tag color={p.col}>{rt?.lb}</Tag>
-                    </div>
-                    <div style={{ fontSize:13,color:C.t4 }}>{p.type==="stamps"&&`${p.cfg.stampsRequired} stamps → ${p.cfg.reward}`}{p.type==="points"&&`${p.cfg.pointsPerDollar} pts/$1 · ${p.cfg.redeemRate}`}</div>
+          :progs.map(p=>(
+            <div key={p.id} style={{ ...card(),padding:mob?14:18 }}>
+              <div style={{ display:"flex",alignItems:"flex-start",gap:12,marginBottom:14 }}>
+                <div style={{ width:44,height:44,borderRadius:10,background:p.col+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${p.col}22` }}>{typeIcon[p.type]||"◆"}</div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap" }}>
+                    <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>{p.name}</span>
+                    <Tag color={p.active?C.ok:C.t4} dot>{p.active?"Active":"Paused"}</Tag>
+                    <Tag color={p.col}>{RWD.find(x=>x.id===p.type)?.lb||p.type}</Tag>
                   </div>
-                </div>
-                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:14,background:C.bg3,borderRadius:10,border:`1px solid ${C.b1}`,marginBottom:12 }}>
-                  {[{l:"Members",v:p.members,i:"👥"},{l:"Redemptions",v:p.redemptions,i:"🎁"},{l:"Scans",v:p.scans,i:"◈"}].map(s=>(
-                    <div key={s.l} style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:16,marginBottom:2 }}>{s.i}</div>
-                      <div style={{ fontWeight:800,fontSize:18,color:C.t1,letterSpacing:"-.04em" }}>{s.v.toLocaleString()}</div>
-                      <div style={{ fontSize:11,color:C.t4 }}>{s.l}</div>
+                  <div style={{ fontSize:13,color:C.t4 }}>{typeLabel(p)}</div>
+
+                  {/* Tier milestones preview */}
+                  {p.type==="tiers" && p.cfg?.tiers && (
+                    <div style={{ display:"flex",gap:6,marginTop:8,flexWrap:"wrap" }}>
+                      {p.cfg.tiers.map(t=>(
+                        <div key={t.level} style={{ background:C.bg3,border:`1px solid ${t.color||C.b2}`,borderRadius:8,padding:"4px 10px",fontSize:11 }}>
+                          <span style={{ color:t.color||C.vi,fontWeight:700 }}>{t.level}</span>
+                          <span style={{ color:C.t4 }}> · {t.stamps} stamps · {t.reward}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div style={{ display:"flex",gap:8 }}>
-                  <button onClick={()=>{setEd(p);setModal(true);}} style={{ ...btnG(true),flex:1,fontSize:13,padding:"9px" }}>Edit</button>
-                  <button onClick={()=>setProgs(progs.filter(x=>x.id!==p.id))} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>
+                  )}
                 </div>
               </div>
-            );
-          })
+
+              {/* Stats */}
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:14,background:C.bg3,borderRadius:10,border:`1px solid ${C.b1}`,marginBottom:12 }}>
+                {[{l:"Members",v:p.members,i:"👥"},{l:"Redemptions",v:p.redemptions,i:"🎁"},{l:"Scans",v:p.scans,i:"◈"}].map(s=>(
+                  <div key={s.l} style={{ textAlign:"center" }}>
+                    <div style={{ fontSize:16,marginBottom:2 }}>{s.i}</div>
+                    <div style={{ fontWeight:800,fontSize:18,color:C.t1,letterSpacing:"-.04em" }}>{s.v.toLocaleString()}</div>
+                    <div style={{ fontSize:11,color:C.t4 }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display:"flex",gap:8 }}>
+                <button onClick={()=>{setEd(p);setModal(true);}} style={{ ...btnG(true),flex:1,fontSize:13,padding:"9px" }}>Edit</button>
+                <button onClick={()=>setProgs(progs.filter(x=>x.id!==p.id))} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>
+              </div>
+            </div>
+          ))
         }
       </div>
       {modal && <RwdModal init={ed} onSave={save} onClose={()=>{setModal(false);setEd(null);}}/>}
@@ -1568,7 +1712,7 @@ function CheckInPage() {
   // Get business slug from URL hash e.g. #/checkin/harlem-cafe
   const slug = window.location.hash.replace(/^#\/?checkin\/?/,"").split("?")[0] || "";
 
-  const [step, setStep] = useState("enter"); // enter | stamped | new | error
+  const [step, setStep] = useState("enter"); // enter | stamped | welcome | redeem | tier
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [stamps, setStamps] = useState(0);
@@ -1578,6 +1722,11 @@ function CheckInPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [redeemCode, setRedeemCode] = useState("");
+  const [tiers, setTiers] = useState(null);
+  const [unlockedTier, setUnlockedTier] = useState(null);
+  const [refEnabled, setRefEnabled] = useState(false);
+  const [refBonus, setRefBonus] = useState("1 bonus stamp");
+  const [refLink, setRefLink] = useState("");
 
   // Load business info and reward settings from KV
   useEffect(() => {
@@ -1590,8 +1739,23 @@ function CheckInPage() {
         if (data.name) setBizName(data.name);
         if (data.rewardGoal) setGoal(data.rewardGoal);
         if (data.rewardName) setReward(data.rewardName);
+        if (data.tiers) setTiers(data.tiers);
+        if (data.refEnabled) setRefEnabled(true);
+        if (data.refBonus) setRefBonus(data.refBonus);
       })
       .catch(()=>{});
+
+    // Handle referral — if ?ref= in URL award bonus stamp to referrer
+    const params = new URLSearchParams(window.location.hash.split("?")[1]||"");
+    const refCode = params.get("ref");
+    if (refCode) {
+      try {
+        const refEmail = atob(refCode);
+        const refKey = `stamps_${slug}_${refEmail}_ref_${Date.now()}`;
+        // Mark this referral as pending — awarded when friend completes first check-in
+        sessionStorage.setItem("pending_ref", JSON.stringify({ slug, refEmail }));
+      } catch(e) {}
+    }
   },[slug]);
 
   const handleCheckin = async e => {
@@ -1600,11 +1764,10 @@ function CheckInPage() {
     setBusy(true); setErr("");
 
     try {
-      // Get existing stamps from localStorage keyed by slug+email
       const key = `stamps_${slug}_${email.toLowerCase()}`;
       const last = localStorage.getItem(`${key}_last`);
       const now = Date.now();
-      const COOLDOWN = 4 * 60 * 60 * 1000; // 4 hours
+      const COOLDOWN = 4 * 60 * 60 * 1000;
 
       if (last && now - parseInt(last) < COOLDOWN) {
         const hoursLeft = Math.ceil((COOLDOWN - (now - parseInt(last))) / 3600000);
@@ -1613,13 +1776,44 @@ function CheckInPage() {
         return;
       }
 
+      const isNew = !localStorage.getItem(`${key}_name`) && !localStorage.getItem(key);
       const current = parseInt(localStorage.getItem(key) || "0");
+
+      // Handle pending referral bonus — award to referrer
+      const pendingRef = sessionStorage.getItem("pending_ref");
+      if (pendingRef && isNew) {
+        try {
+          const { slug:rSlug, refEmail } = JSON.parse(pendingRef);
+          if (rSlug === slug && refEmail !== email.toLowerCase()) {
+            const refKey = `stamps_${slug}_${refEmail}`;
+            const refStamps = parseInt(localStorage.getItem(refKey)||"0") + 1;
+            localStorage.setItem(refKey, refStamps.toString());
+            sessionStorage.removeItem("pending_ref");
+          }
+        } catch(e) {}
+      }
+
       const newStamps = current + 1;
 
+      // Check tiers
+      if (tiers) {
+        const newlyUnlocked = tiers.find(t => t.stamps === newStamps);
+        if (newlyUnlocked) {
+          localStorage.setItem(key, newStamps.toString());
+          localStorage.setItem(`${key}_last`, now.toString());
+          if (name) localStorage.setItem(`${key}_name`, name);
+          setStamps(newStamps);
+          setUnlockedTier(newlyUnlocked);
+          setStep("tier");
+          setBusy(false);
+          return;
+        }
+      }
+
+      // Standard stamp card
       if (newStamps >= goal) {
-        // Generate redemption code
         const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-        localStorage.setItem(key, "0"); // reset stamps
+        localStorage.setItem(key, "0");
         localStorage.removeItem(`${key}_last`);
         setRedeemCode(code);
         setStamps(0);
@@ -1628,12 +1822,14 @@ function CheckInPage() {
         localStorage.setItem(key, newStamps.toString());
         localStorage.setItem(`${key}_last`, now.toString());
         setStamps(newStamps);
-
-        // Save name if new
         if (name) localStorage.setItem(`${key}_name`, name);
 
-        const savedName = name || localStorage.getItem(`${key}_name`) || "";
-        const isNew = current === 0 && !localStorage.getItem(`${key}_name`);
+        // Generate referral link
+        if (refEnabled) {
+          const code = btoa(email.toLowerCase());
+          setRefLink(`${window.location.origin}${window.location.pathname}#/checkin/${slug}?ref=${code}`);
+        }
+
         setStep(isNew ? "welcome" : "stamped");
       }
     } catch(x) {
@@ -1701,49 +1897,68 @@ function CheckInPage() {
         )}
 
         {/* STEP: Stamp awarded */}
-        {step==="stamped" && (
+        {(step==="stamped"||step==="welcome") && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>⭐</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>Stamp added!</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>You now have {stamps} of {goal} stamps</div>
+            <div style={{ fontSize:48,marginBottom:12 }}>{step==="welcome"?"🎉":"⭐"}</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>
+              {step==="welcome"?`Welcome${name?`, ${name}`:""}!`:"Stamp added!"}
+            </div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>
+              {step==="welcome"?"You've earned your first stamp!":"You now have"} {stamps} of {goal} stamps
+            </div>
 
             {/* Stamp progress */}
             <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginBottom:24 }}>
               {Array.from({length:goal}).map((_,i)=>(
-                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,transition:"all .2s" }}>
+                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>
                   {i<stamps?"⭐":""}
                 </div>
               ))}
             </div>
 
             <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:20 }}>
-              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>{goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!</div>
+              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>
+                {goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!
+              </div>
             </div>
+
+            {/* Referral share */}
+            {refLink && (
+              <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"14px 16px",marginBottom:16 }}>
+                <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>🤝 Refer a friend — earn a bonus stamp!</div>
+                <div style={{ fontSize:12,color:C.t4,marginBottom:10 }}>Share your link. When a friend checks in for the first time you both earn {refBonus}.</div>
+                <button onClick={()=>{
+                  if (navigator.share) {
+                    navigator.share({ title:`Join ${bizName} Rewards`, text:`Join me at ${bizName} — earn free rewards every visit!`, url:refLink });
+                  } else {
+                    navigator.clipboard.writeText(refLink);
+                    alert("Referral link copied!");
+                  }
+                }} style={{ ...btnP(C.vi,true),fontSize:13,padding:"10px" }}>
+                  Share referral link →
+                </button>
+              </div>
+            )}
 
             <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Done</button>
           </div>
         )}
 
-        {/* STEP: Welcome new member */}
-        {step==="welcome" && (
+        {/* STEP: Tier unlocked */}
+        {step==="tier" && unlockedTier && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>🎉</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>Welcome{name?`, ${name}`:""}!</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>You've earned your first stamp at {bizName}</div>
-
-            <div style={{ display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginBottom:24 }}>
-              {Array.from({length:goal}).map((_,i)=>(
-                <div key={i} style={{ width:36,height:36,borderRadius:"50%",background:i<1?C.vi:C.bg3,border:`2px solid ${i<1?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>
-                  {i<1?"⭐":""}
-                </div>
-              ))}
+            <div style={{ fontSize:48,marginBottom:12 }}>
+              {unlockedTier.level==="Bronze"?"🥉":unlockedTier.level==="Silver"?"🥈":"🥇"}
             </div>
-
-            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:20 }}>
-              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>Collect {goal} stamps and get {reward} — free!</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{unlockedTier.level} achieved!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>You've reached {unlockedTier.stamps} stamps</div>
+            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"16px",marginBottom:20 }}>
+              <div style={{ fontSize:12,color:C.t4,marginBottom:4 }}>YOUR REWARD</div>
+              <div style={{ fontSize:18,fontWeight:800,color:C.vi }}>{unlockedTier.reward}</div>
+              <div style={{ fontSize:12,color:C.t4,marginTop:6 }}>Show this screen to redeem</div>
             </div>
-
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Got it!</button>
+            <div style={{ fontSize:12,color:C.t4,marginBottom:16 }}>Keep earning stamps to reach the next tier!</div>
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Continue earning</button>
           </div>
         )}
 
