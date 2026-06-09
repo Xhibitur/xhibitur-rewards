@@ -76,37 +76,82 @@ const DEMOS = {
   "demo@xhibitur.com":  { pw:"demo1234",  name:"Demo Business", plan:"pro"   },
   "trial@xhibitur.com": { pw:"trial1234", name:"Trial Account",  plan:"trial" },
 };
+
+async function callAuth(body) {
+  const res = await fetch("/.netlify/functions/auth", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 function AuthProvider({ children }) {
   const [user, setU] = useState(null);
   const [loading, setL] = useState(true);
-  useEffect(() => { try { const s=localStorage.getItem("xr_u"); if(s) setU(JSON.parse(s)); } catch{} setL(false); },[]);
-  const save = u => { setU(u); localStorage.setItem("xr_u", JSON.stringify(u)); };
-  const signIn = async (em,pw) => {
-    const f = DEMOS[em.toLowerCase()];
-    if (!f||f.pw!==pw) throw new Error("Invalid email or password");
-    // Check Stripe directly for real plan status
-    let plan = f.plan;
+
+  useEffect(() => {
     try {
-      const res = await fetch("/.netlify/functions/check-plan", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ email: em.toLowerCase() }),
-      });
-      const data = await res.json();
-      if (data.plan) plan = data.plan;
-    } catch(e) {
-      console.log("Plan check failed, using default");
+      const s = localStorage.getItem("xr_u");
+      if (s) setU(JSON.parse(s));
+    } catch{}
+    setL(false);
+  },[]);
+
+  const save = u => { setU(u); localStorage.setItem("xr_u", JSON.stringify(u)); };
+
+  const signIn = async (em, pw) => {
+    // Demo accounts — bypass Supabase
+    const demo = DEMOS[em.toLowerCase()];
+    if (demo && demo.pw === pw) {
+      let plan = demo.plan;
+      try {
+        const r = await fetch("/.netlify/functions/check-plan", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ email: em.toLowerCase() }),
+        });
+        const d = await r.json();
+        if (d.plan) plan = d.plan;
+      } catch{}
+      save({ id:"demo_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:demo.name, plan, isDemo:true });
+      return;
     }
-    save({ id:"u_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:f.name, plan });
+
+    // Real users — Supabase Auth
+    const data = await callAuth({ action:"signin", email:em, password:pw });
+    if (data.error) throw new Error(data.error);
+    if (data.token) localStorage.setItem("xr_token", data.token);
+    if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
+    save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:data.user.plan });
   };
-  const signUp = async (em,pw,name) => {
-    if (!em||!pw||!name) throw new Error("All fields required");
+
+  const signUp = async (em, pw, nm) => {
+    if (!em||!pw||!nm) throw new Error("All fields required");
     if (pw.length<8) throw new Error("Password must be at least 8 characters");
-    save({ id:"u_"+Math.random().toString(36).slice(2,10), email:em.toLowerCase(), name, plan:"trial", trialStart:new Date().toISOString() });
+
+    const data = await callAuth({ action:"signup", email:em, password:pw, name:nm });
+    if (data.error) throw new Error(data.error);
+    if (data.token) localStorage.setItem("xr_token", data.token);
+    if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
+    save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:"trial", trialStart:new Date().toISOString() });
   };
-  const signOut = () => { setU(null); localStorage.removeItem("xr_u"); };
+
+  const signOut = () => {
+    setU(null);
+    localStorage.removeItem("xr_u");
+    localStorage.removeItem("xr_token");
+    localStorage.removeItem("xr_refresh");
+  };
+
   const setPlan = p => save({ ...user, plan:p });
-  return <AuthCtx.Provider value={{ user,loading,signIn,signUp,signOut,setPlan }}>{children}</AuthCtx.Provider>;
+  const updateName = async nm => {
+    if (user && !user.isDemo) {
+      await callAuth({ action:"update-name", email:user.email, name:nm });
+    }
+    save({ ...user, name:nm });
+  };
+
+  return <AuthCtx.Provider value={{ user,loading,signIn,signUp,signOut,setPlan,updateName }}>{children}</AuthCtx.Provider>;
 }
 const useAuth = () => useContext(AuthCtx);
 
@@ -432,6 +477,76 @@ function Login() {
         <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Signing in…":"Sign in →"}</button>
       </form>
       <p style={{ textAlign:"center",marginTop:18,fontSize:14,color:C.t4 }}>No account? <span onClick={()=>nav("signup")} style={{ color:C.vi,fontWeight:600,cursor:"pointer" }}>Start free trial</span></p>
+      <p style={{ textAlign:"center",marginTop:8,fontSize:13,color:C.t4 }}><span onClick={()=>nav("forgot-password")} style={{ color:C.t4,cursor:"pointer",textDecoration:"underline" }}>Forgot password?</span></p>
+    </AuthShell>
+  );
+}
+
+function ForgotPassword() {
+  const { nav } = useNav();
+  const [em,setEm]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [sent,setSent]=useState(false);
+  const go = async e => {
+    e.preventDefault(); setErr(""); setBusy(true);
+    try {
+      const res = await fetch("/.netlify/functions/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"forgot-password", email:em }) });
+      const data = await res.json();
+      if (data.error) setErr(data.error); else setSent(true);
+    } catch { setErr("Something went wrong. Please try again."); }
+    setBusy(false);
+  };
+  return (
+    <AuthShell title="Reset your password" sub="Enter your email and we'll send a reset link.">
+      {sent
+        ? <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:40,marginBottom:16 }}>📧</div>
+            <div style={{ fontSize:16,fontWeight:700,color:C.t1,marginBottom:8 }}>Check your inbox</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20,lineHeight:1.6 }}>We sent a password reset link to <strong style={{ color:C.t2 }}>{em}</strong>. Check your inbox and click the link.</div>
+            <button onClick={()=>nav("login")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Back to sign in</button>
+          </div>
+        : <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
+            <div><label style={lbl}>Email</label><input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="you@business.com" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+            {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
+            <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Sending…":"Send reset link →"}</button>
+            <button type="button" onClick={()=>nav("login")} style={{ ...btnG(true),fontSize:14,padding:"12px" }}>Back to sign in</button>
+          </form>
+      }
+    </AuthShell>
+  );
+}
+
+function ResetPassword() {
+  const { nav } = useNav();
+  const [pw,setPw]=useState(""); const [pw2,setPw2]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [done,setDone]=useState(false);
+  // Get token from URL hash — Supabase puts it after #access_token=
+  const token = new URLSearchParams(window.location.hash.split("?")[1]||window.location.search).get("access_token") || "";
+  const go = async e => {
+    e.preventDefault(); setErr("");
+    if (pw !== pw2) { setErr("Passwords don't match."); return; }
+    if (pw.length < 8) { setErr("Password must be at least 8 characters."); return; }
+    setBusy(true);
+    try {
+      const res = await fetch("/.netlify/functions/auth", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"reset-password", token, newPassword:pw }) });
+      const data = await res.json();
+      if (data.error) setErr(data.error); else setDone(true);
+    } catch { setErr("Something went wrong. Please try again."); }
+    setBusy(false);
+  };
+  return (
+    <AuthShell title="Set new password" sub="Choose a strong password for your account.">
+      {done
+        ? <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:40,marginBottom:16 }}>✅</div>
+            <div style={{ fontSize:16,fontWeight:700,color:C.t1,marginBottom:8 }}>Password updated!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>Your password has been changed. Sign in with your new password.</div>
+            <button onClick={()=>nav("login")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Sign in →</button>
+          </div>
+        : <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
+            <div><label style={lbl}>New password</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+            <div><label style={lbl}>Confirm password</label><input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Same password again" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+            {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
+            <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Updating…":"Set new password →"}</button>
+          </form>
+      }
     </AuthShell>
   );
 }
@@ -2367,8 +2482,15 @@ function AppCore() {
   // Handle checkin routes: #/checkin/slug
   if (page.startsWith("checkin")) return <CheckInPage/>;
 
+  // Handle password reset redirect from Supabase email
+  if (window.location.hash.includes("access_token") && window.location.hash.includes("type=recovery")) {
+    return <ResetPassword/>;
+  }
+
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
+    "forgot-password":<ForgotPassword/>,
+    "reset-password":<ResetPassword/>,
     dashboard:<DashHome/>,
     "dashboard/qr":<QRPage/>,
     "dashboard/rewards":<RewardsPage programs={programs} setPrograms={setPrograms}/>,
