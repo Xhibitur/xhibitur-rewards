@@ -1,7 +1,4 @@
 // netlify/functions/auth.js
-// Handles all authentication via Supabase Auth
-// signup | signin | signout | forgot-password | reset-password | session
-
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -13,6 +10,33 @@ const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
 };
+
+// Send email via Resend
+async function sendEmail({ to, subject, html }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) { console.log("No RESEND_API_KEY"); return false; }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Xhibitur Rewards <notifications@xhibitur.com>",
+        to,
+        subject,
+        html,
+      }),
+    });
+    const data = await res.json();
+    console.log("Email result:", JSON.stringify(data));
+    return res.ok;
+  } catch(e) {
+    console.log("Email error:", e.message);
+    return false;
+  }
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -34,7 +58,7 @@ exports.handler = async (event) => {
       const { data, error } = await supabase.auth.admin.createUser({
         email: email.toLowerCase(),
         password,
-        email_confirm: true, // auto-confirm so they don't need to verify email
+        email_confirm: true,
         user_metadata: { name, plan: "trial", trialStart: new Date().toISOString() },
       });
 
@@ -45,7 +69,7 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: error.message }) };
       }
 
-      // Also save to users table
+      // Save to users table
       await supabase.from("users").upsert({
         id: data.user.id,
         email: email.toLowerCase(),
@@ -54,7 +78,7 @@ exports.handler = async (event) => {
         trial_start: new Date().toISOString(),
       }, { onConflict: "email" });
 
-      // Sign them in immediately
+      // Sign in immediately
       const { data: session, error: signInErr } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase(),
         password,
@@ -66,6 +90,27 @@ exports.handler = async (event) => {
           user: { id: data.user.id, email: email.toLowerCase(), name, plan: "trial" }
         })};
       }
+
+      // Send welcome email
+      await sendEmail({
+        to: email,
+        subject: "Welcome to Xhibitur Rewards! 🎉",
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#000;color:#fff;border-radius:12px;overflow:hidden">
+            <div style="background:#D4A017;padding:20px 24px;text-align:center">
+              <div style="font-size:24px;font-weight:900;color:#000">Xhibitur Rewards</div>
+            </div>
+            <div style="padding:28px 24px">
+              <h2 style="color:#fff;margin:0 0 12px">Welcome, ${name}! 👋</h2>
+              <p style="color:#a3a3a3;font-size:14px;line-height:1.6;margin:0 0 20px">Your 14-day free trial has started. Set up your first Smart QR code and rewards program today.</p>
+              <div style="text-align:center;margin-bottom:24px">
+                <a href="https://rewards.xhibitur.com/#/dashboard" style="display:inline-block;background:#D4A017;color:#000;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Go to dashboard →</a>
+              </div>
+              <p style="font-size:12px;color:#333;text-align:center">Powered by Xhibitur Rewards · rewards.xhibitur.com</p>
+            </div>
+          </div>
+        `,
+      });
 
       return { statusCode: 200, headers, body: JSON.stringify({
         success: true,
@@ -90,14 +135,12 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid email or password" }) };
       }
 
-      // Get user profile from users table
       const { data: profile } = await supabase
         .from("users")
         .select("name, plan")
         .eq("email", email.toLowerCase())
         .single();
 
-      // Check Stripe for real plan status
       let plan = profile?.plan || "trial";
       try {
         const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -106,15 +149,15 @@ exports.handler = async (event) => {
           const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
           if (subs.data.length) plan = "pro";
         }
-      } catch(e) { /* keep existing plan */ }
+      } catch(e) {}
 
-      const name = profile?.name || data.user.user_metadata?.name || email.split("@")[0];
+      const userName = profile?.name || data.user.user_metadata?.name || email.split("@")[0];
 
       return { statusCode: 200, headers, body: JSON.stringify({
         success: true,
         token: data.session.access_token,
         refreshToken: data.session.refresh_token,
-        user: { id: data.user.id, email: email.toLowerCase(), name, plan }
+        user: { id: data.user.id, email: email.toLowerCase(), name: userName, plan }
       })};
     }
 
@@ -124,20 +167,8 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Email required" }) };
       }
 
-      // Check if user exists first
-      const { data: profile } = await supabase
-        .from("users")
-        .select("email")
-        .eq("email", email.toLowerCase())
-        .single();
-
-      if (!profile) {
-        // Don't reveal if email exists — security best practice
-        return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
-      }
-
-      // Generate reset token via Supabase
-      const { error } = await supabase.auth.admin.generateLink({
+      // Generate a secure reset token using Supabase
+      const { data, error } = await supabase.auth.admin.generateLink({
         type: "recovery",
         email: email.toLowerCase(),
         options: {
@@ -145,8 +176,36 @@ exports.handler = async (event) => {
         }
       });
 
+      // Always return success — don't reveal if email exists
       if (error) {
-        return { statusCode: 500, headers, body: JSON.stringify({ error: "Failed to send reset email" }) };
+        console.log("generateLink error:", error.message);
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+      }
+
+      // Send the reset email ourselves via Resend
+      const resetLink = data?.properties?.action_link;
+      if (resetLink) {
+        await sendEmail({
+          to: email,
+          subject: "Reset your Xhibitur Rewards password",
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#000;color:#fff;border-radius:12px;overflow:hidden">
+              <div style="background:#D4A017;padding:20px 24px;text-align:center">
+                <div style="font-size:24px;font-weight:900;color:#000">Xhibitur Rewards</div>
+                <div style="font-size:13px;color:#000;margin-top:4px">Password Reset</div>
+              </div>
+              <div style="padding:28px 24px">
+                <h2 style="color:#fff;margin:0 0 12px">Reset your password</h2>
+                <p style="color:#a3a3a3;font-size:14px;line-height:1.6;margin:0 0 24px">We received a request to reset your password. Click the button below to set a new one. This link expires in 1 hour.</p>
+                <div style="text-align:center;margin-bottom:24px">
+                  <a href="${resetLink}" style="display:inline-block;background:#D4A017;color:#000;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Reset my password →</a>
+                </div>
+                <p style="color:#525252;font-size:13px;line-height:1.6">If you didn't request this, ignore this email — your password won't change.</p>
+                <p style="font-size:12px;color:#333;text-align:center;margin-top:20px">Powered by Xhibitur Rewards · rewards.xhibitur.com</p>
+              </div>
+            </div>
+          `,
+        });
       }
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
@@ -161,7 +220,6 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Password must be at least 8 characters" }) };
       }
 
-      // Verify the token and update password
       const { data, error } = await supabase.auth.admin.updateUserById(token, {
         password: newPassword,
       });
@@ -178,9 +236,7 @@ exports.handler = async (event) => {
       if (!email || !name) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Email and name required" }) };
       }
-
       await supabase.from("users").update({ name }).eq("email", email.toLowerCase());
-
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
