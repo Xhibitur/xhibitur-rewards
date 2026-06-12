@@ -2021,11 +2021,7 @@ function AnalyticsPage() {
         <div style={{ ...card(),padding:mob?14:18 }}>
           <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Top QR codes</div>
           <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No scan data yet. Scans will appear here once customers use your QR codes.</div>
-            <div key={q.n} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<2?`1px solid ${C.b1}`:"none" }}>
-              <div style={{ width:24,height:24,borderRadius:"50%",background:q.c+"16",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:q.c,flexShrink:0 }}>{i+1}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:13,fontWeight:600,color:C.t2 }}>{q.n}</div><div style={{ fontSize:11,color:C.t4 }}>{q.s.toLocaleString()} scans</div></div>
-            </div>
-          ))}
+        </div>
         </div>
         <div style={{ ...card(),padding:mob?14:18 }}>
           <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Device split</div>
