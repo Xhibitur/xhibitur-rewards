@@ -70,6 +70,26 @@ const inp = {
 const lbl = { display:"block",fontSize:11,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".07em",marginBottom:6 };
 const card = (e) => ({ background:e?C.bg3:C.bg2, borderRadius:14, border:`1px solid ${e?C.b2:C.b1}` });
 
+function PwInput({ value, onChange, placeholder="••••••••", style={} }) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <div style={{ position:"relative" }}>
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ ...style, paddingRight:52 }}
+        onFocus={e=>e.target.style.borderColor=C.vi}
+        onBlur={e=>e.target.style.borderColor=C.b2}
+      />
+      <button type="button" onClick={()=>setShow(s=>!s)}
+        style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.t4,cursor:"pointer",fontSize:12,fontWeight:600,padding:"4px",userSelect:"none",minHeight:0 }}>
+        {show ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const AuthCtx = createContext(null);
 const DEMOS = {
@@ -472,7 +492,7 @@ function Login() {
     <AuthShell title="Welcome back" sub="Sign in to your Xhibitur Rewards account">
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
         <div><label style={lbl}>Email</label><input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="you@business.com" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-        <div><label style={lbl}>Password</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+        <div><label style={lbl}>Password</label><PwInput value={pw} onChange={e=>setPw(e.target.value)} style={dInp}/></div>
         {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
         <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Signing in…":"Sign in →"}</button>
       </form>
@@ -541,8 +561,8 @@ function ResetPassword() {
             <button onClick={()=>nav("login")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Sign in →</button>
           </div>
         : <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
-            <div><label style={lbl}>New password</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-            <div><label style={lbl}>Confirm password</label><input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Same password again" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+<div><label style={lbl}>New password</label><PwInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp}/></div>
+           <div><label style={lbl}>Confirm password</label><PwInput value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Same password again" style={dInp}/></div>
             {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
             <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Updating…":"Set new password →"}</button>
           </form>
@@ -589,7 +609,13 @@ function Signup() {
     <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49.99/month after.">
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
         {[{ lb:"Business name",val:nm,set:setNm,type:"text",ph:"Acme Coffee Co." },{ lb:"Email",val:em,set:setEm,type:"email",ph:"you@business.com" },{ lb:"Password",val:pw,set:setPw,type:"password",ph:"8+ characters" }].map(f=>(
-          <div key={f.lb}><label style={lbl}>{f.lb}</label><input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+          <div key={f.lb}><label style={lbl}>{f.lb}</label>{f.type==="password"
+  ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
+  : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+}</div>{f.type==="password"
+  ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
+  : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+}</div>
         ))}
         <div style={row}>
           <CustomCheckbox id="age" checked={ageOk} onChange={e=>setAgeOk(e.target.checked)}/>
