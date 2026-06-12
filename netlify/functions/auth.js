@@ -219,16 +219,18 @@ exports.handler = async (event) => {
       if (newPassword.length < 8) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Password must be at least 8 characters" }) };
       }
-
-      const { data, error } = await supabase.auth.admin.updateUserById(token, {
-        password: newPassword,
-      });
-
-      if (error) {
+const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData?.user) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid or expired reset link. Please request a new one." }) };
       }
-
+      const { error } = await supabase.auth.admin.updateUserById(userData.user.id, {
+        password: newPassword,
+      });
+      if (error) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: "Failed to update password. Please request a new reset link." }) };
+      }
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+     
     }
 
     // ── UPDATE NAME ───────────────────────────────────────────────────────────
