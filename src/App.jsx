@@ -1994,15 +1994,17 @@ const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 
 function AnalyticsPage() {
   const w=useW(); const mob=w<640;
-  const mx=Math.max(...HIST);
+  const HIST=[0,0,0,0,0,0,0,0,0,0,0,0];
+  const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mx=Math.max(...HIST,1);
   return (
     <DashShell>
       <PgHead title="Analytics" sub="Scans, redemptions and member growth."/>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
         <Stat icon="◈" label="Total Scans" value="0" accent={C.vi}/>
-<Stat icon="📅" label="This Month" value="0" accent={C.em}/>
-<Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
-<Stat icon="👥" label="Members" value="0" accent={C.cy}/>
+        <Stat icon="📅" label="This Month" value="0" accent={C.em}/>
+        <Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
+        <Stat icon="👥" label="Members" value="0" accent={C.cy}/>
       </div>
       <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
         <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:16 }}>Scan volume — last 12 months</div>
@@ -2022,24 +2024,17 @@ function AnalyticsPage() {
           <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Top QR codes</div>
           <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No scan data yet. Scans will appear here once customers use your QR codes.</div>
         </div>
-        </div>
         <div style={{ ...card(),padding:mob?14:18 }}>
           <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Device split</div>
-          {[{l:"iPhone / iOS",p:58,c:C.vi},{l:"Android",p:31,c:C.em},{l:"Desktop",p:11,c:C.t4}].map(d=>(
-            <div key={d.l} style={{ marginBottom:14 }}>
-              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}><span style={{ fontSize:13,color:C.t3 }}>{d.l}</span><span style={{ fontSize:13,fontWeight:700,color:d.c }}>{d.p}%</span></div>
-              <div style={{ height:5,background:C.bg4,borderRadius:99,overflow:"hidden" }}><div style={{ height:"100%",width:`${d.p}%`,background:d.c,borderRadius:99 }}/></div>
-            </div>
-          ))}
+          <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No data yet. Device breakdown will appear once customers start scanning.</div>
         </div>
       </div>
-    </div>
       <div style={{ ...card(),padding:mob?14:18,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap" }}>
         <div><div style={{ fontWeight:600,fontSize:14,color:C.t1,marginBottom:3 }}>Export analytics data</div><div style={{ fontSize:13,color:C.t4 }}>Full scan history and redemption logs as CSV.</div></div>
         <button style={{ ...btnP(),padding:"10px 18px",fontSize:14,width:mob?"100%":undefined }}>Download CSV</button>
       </div>
     </DashShell>
-  );
+  ); 
 }
 
 // ── Account Page ──────────────────────────────────────────────────────────────
