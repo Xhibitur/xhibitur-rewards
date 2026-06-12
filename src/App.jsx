@@ -612,7 +612,7 @@ function Signup() {
           <div key={f.lb}><label style={lbl}>{f.lb}</label>{f.type==="password"
   ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
   : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-}</div>{f.type==="password"
+}</div>
   ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
   : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
 }</div>
