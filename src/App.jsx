@@ -1023,13 +1023,7 @@ function PricingPage() {
 }
 
 // ── Dashboard Home ────────────────────────────────────────────────────────────
-const FEED = [
-  { icon:"▦", text:'QR "Summer Menu" scanned 12×',      time:"2 min ago",  col:C.vi },
-  { icon:"◆", text:"Reward redeemed — member #847",      time:"9 min ago",  col:C.fu },
-  { icon:"◆", text:"New loyalty member joined",           time:"1 hr ago",   col:C.em },
-  { icon:"▦", text:'QR "App Download" rule updated',      time:"2 hrs ago",  col:C.cy },
-  { icon:"◆", text:"Win-back campaign sent (34 members)", time:"4 hrs ago",  col:C.am },
-];
+const FEED = [];
 
 function DashHome() {
   const { user } = useAuth(); const { nav } = useNav();
@@ -1052,10 +1046,10 @@ function DashHome() {
       )}
 
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="▦" label="QR Scans" value="1,284" delta="+24%" accent={C.vi}/>
-        <Stat icon="◆" label="Redeemed" value="47" delta="+8%" accent={C.fu}/>
-        <Stat icon="👥" label="Members" value="312" delta="+12%" accent={C.em}/>
-        <Stat icon="◈" label="Growth" value="24%" delta="+5%" accent={C.cy}/>
+        <Stat icon="▦" label="QR Scans" value="0" accent={C.vi}/>
+<Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
+<Stat icon="👥" label="Members" value="0" accent={C.em}/>
+<Stat icon="◈" label="Growth" value="0%" accent={C.cy}/>
       </div>
 
       <div style={{ ...card(),padding:mob?16:20,marginBottom:14 }}>
@@ -1472,11 +1466,27 @@ const usePrograms = () => useContext(ProgramsCtx);
 
 function QRPage() {
   const { nav } = useNav(); const w=useW(); const mob=w<640;
+  const { user } = useAuth();
   const programs = usePrograms();
-  const [codes,setCodes]=useState([
-    { id:"1",name:"Summer Menu 2026",workerUrl:"https://summer-menu.workers.dev",destinations:[{id:"a",label:"Lunch",url:"https://example.com/lunch",rules:[{id:"r1",type:"time",tf:"11:00",tt:"14:30",cond:""}]}],fallback:"https://example.com",fg:C.vi },
-    { id:"2",name:"App Download QR",workerUrl:"https://app-dl.workers.dev",destinations:[{id:"b",label:"iOS",url:"https://apps.apple.com",rules:[{id:"r2",type:"device",cond:"iPhone / iOS",tf:"09:00",tt:"17:00"}]}],fallback:"https://example.com",fg:C.t1 },
-  ]);
+  const [codes,setCodes]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
+
+  useEffect(()=>{
+    if (!user?.email) return;
+    fetch("/.netlify/functions/qr-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"load", userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(d.codes) setCodes(d.codes); }).finally(()=>setLoading(false));
+  },[user?.email]);
+
+  const save=async qr=>{
+    const updated = ed ? codes.map(x=>x.id===qr.id?qr:x) : [...codes,qr];
+    setCodes(updated); setModal(false); setEd(null);
+    await fetch("/.netlify/functions/qr-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"save", userEmail:user.email, qr }) });
+  };
+  const remove=async id=>{
+    setCodes(codes.filter(x=>x.id!==id));
+    await fetch("/.netlify/functions/qr-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"delete", userEmail:user.email, qrId:id }) });
+  };
   const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
   const save=qr=>{ if(ed)setCodes(codes.map(x=>x.id===qr.id?qr:x));else setCodes([...codes,qr]); setModal(false);setEd(null); };
   return (
@@ -1489,9 +1499,7 @@ function QRPage() {
           :codes.map(qr=>(
             <QRCard key={qr.id} qr={qr} mob={mob}
               onEdit={q=>{setEd(q);setModal(true);}}
-              onDelete={id=>setCodes(codes.filter(x=>x.id!==id))}/>
-          ))
-        }
+              onDelete={remove}
       </div>
       {modal && <QRModal init={ed} onSave={save} programs={programs} onClose={()=>{setModal(false);setEd(null);}}/>}
     </DashShell>
@@ -1674,11 +1682,27 @@ function RwdModal({ init,onSave,onClose }) {
 }
 
 function RewardsPage({ programs, setPrograms }) {
-  const progs = programs || DEMO_P;
-  const setProgs = setPrograms || (()=>{});
+  const { user } = useAuth();
   const { nav } = useNav(); const w=useW(); const mob=w<640;
+  const [progs, setProgs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
-  const save=p=>{ if(ed)setProgs(progs.map(x=>x.id===p.id?p:x));else setProgs([...progs,p]); setModal(false);setEd(null); };
+
+  useEffect(()=>{
+    if (!user?.email) return;
+    fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"load", userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(d.programs) setProgs(d.programs); }).finally(()=>setLoading(false));
+  },[user?.email]);
+
+  const save=async p=>{
+    const updated = ed ? progs.map(x=>x.id===p.id?p:x) : [...progs,p];
+    setProgs(updated); setModal(false); setEd(null);
+    await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"save", userEmail:user.email, program:p }) });
+  };
+  const remove=async id=>{
+    setProgs(progs.filter(x=>x.id!==id));
+    await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"delete", userEmail:user.email, programId:id }) });
+  };
 
   const typeLabel = p => {
     if (p.type==="stamps") return `${p.cfg?.stampsRequired} stamps → ${p.cfg?.reward}`;
@@ -1735,7 +1759,7 @@ function RewardsPage({ programs, setPrograms }) {
 
               <div style={{ display:"flex",gap:8 }}>
                 <button onClick={()=>{setEd(p);setModal(true);}} style={{ ...btnG(true),flex:1,fontSize:13,padding:"9px" }}>Edit</button>
-                <button onClick={()=>setProgs(progs.filter(x=>x.id!==p.id))} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>
+<button onClick={()=>remove(p.id)} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>                
               </div>
             </div>
           ))
@@ -1963,7 +1987,7 @@ function BroadcastPage() {
 }
 
 // ── Analytics Page ──
-const HIST=[284,310,291,405,380,420,512,488,390,445,510,1284];
+const HIST=[0,0,0,0,0,0,0,0,0,0,0,0];
 const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function AnalyticsPage() {
@@ -1973,10 +1997,10 @@ function AnalyticsPage() {
     <DashShell>
       <PgHead title="Analytics" sub="Scans, redemptions and member growth."/>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="◈" label="Total Scans" value="2,041" delta="+18%" accent={C.vi}/>
-        <Stat icon="📅" label="This Month" value="1,284" delta="+24%" accent={C.em}/>
-        <Stat icon="◆" label="Redeemed" value="47" delta="+8%" accent={C.fu}/>
-        <Stat icon="👥" label="Members" value="312" delta="+12%" accent={C.cy}/>
+        <Stat icon="◈" label="Total Scans" value="0" accent={C.vi}/>
+<Stat icon="📅" label="This Month" value="0" accent={C.em}/>
+<Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
+<Stat icon="👥" label="Members" value="0" accent={C.cy}/>
       </div>
       <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
         <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:16 }}>Scan volume — last 12 months</div>
@@ -1994,7 +2018,7 @@ function AnalyticsPage() {
       <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:14 }}>
         <div style={{ ...card(),padding:mob?14:18 }}>
           <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Top QR codes</div>
-          {[{n:"Summer Menu 2026",s:1284,c:C.vi},{n:"App Download QR",s:445,c:C.em},{n:"Event Oct Summit",s:312,c:C.am}].map((q,i)=>(
+          <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No scan data yet. Scans will appear here once customers use your QR codes.</div>
             <div key={q.n} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<2?`1px solid ${C.b1}`:"none" }}>
               <div style={{ width:24,height:24,borderRadius:"50%",background:q.c+"16",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:q.c,flexShrink:0 }}>{i+1}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:13,fontWeight:600,color:C.t2 }}>{q.n}</div><div style={{ fontSize:11,color:C.t4 }}>{q.s.toLocaleString()} scans</div></div>
