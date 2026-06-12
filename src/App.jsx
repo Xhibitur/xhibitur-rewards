@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 
-// ── Fonts + Global Styles ─────────────────────────────────────────────────────
 (() => {
   if (document.getElementById("xr-g")) return;
   const l = document.createElement("link");
@@ -27,7 +26,6 @@ import React, { useState, useEffect, useRef, createContext, useContext } from "r
   document.head.appendChild(s);
 })();
 
-// ── Responsive ────────────────────────────────────────────────────────────────
 function useW() {
   const [w, setW] = useState(window.innerWidth);
   useEffect(() => {
@@ -38,7 +36,6 @@ function useW() {
   return w;
 }
 
-// ── Tokens ────────────────────────────────────────────────────────────────────
 const C = {
   bg:"#000",bg1:"#0a0a0a",bg2:"#111",bg3:"#171717",bg4:"#1c1c1c",
   b1:"#1a1a1a",b2:"#252525",b3:"#333",b4:"#444",
@@ -48,10 +45,8 @@ const C = {
   ok:"#22c55e",warn:"#f59e0b",err:"#ef4444",
 };
 
-// ── Single plan ───────────────────────────────────────────────────────────────
 const PLAN = { name:"Pro", price:49, priceAnn:490, col:C.vi };
 
-// ── Shared styles ─────────────────────────────────────────────────────────────
 const btnP = (color=C.vi, full=false) => ({
   display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,
   padding:"11px 20px",background:color,color:"#fff",border:"none",
@@ -90,7 +85,7 @@ function PwInput({ value, onChange, placeholder="••••••••", styl
     </div>
   );
 }
-// ── Auth ──────────────────────────────────────────────────────────────────────
+
 const AuthCtx = createContext(null);
 const DEMOS = {
   "demo@xhibitur.com":  { pw:"demo1234",  name:"Demo Business", plan:"pro"   },
@@ -99,9 +94,7 @@ const DEMOS = {
 
 async function callAuth(body) {
   const res = await fetch("/.netlify/functions/auth", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(body),
+    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body),
   });
   return res.json();
 }
@@ -109,102 +102,54 @@ async function callAuth(body) {
 function AuthProvider({ children }) {
   const [user, setU] = useState(null);
   const [loading, setL] = useState(true);
-
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem("xr_u");
-      if (s) setU(JSON.parse(s));
-    } catch{}
-    setL(false);
-  },[]);
-
+  useEffect(() => { try { const s = localStorage.getItem("xr_u"); if (s) setU(JSON.parse(s)); } catch{} setL(false); },[]);
   const save = u => { setU(u); localStorage.setItem("xr_u", JSON.stringify(u)); };
-
   const signIn = async (em, pw) => {
-    // Demo accounts — bypass Supabase
     const demo = DEMOS[em.toLowerCase()];
     if (demo && demo.pw === pw) {
       let plan = demo.plan;
-      try {
-        const r = await fetch("/.netlify/functions/check-plan", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ email: em.toLowerCase() }),
-        });
-        const d = await r.json();
-        if (d.plan) plan = d.plan;
-      } catch{}
-      save({ id:"demo_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:demo.name, plan, isDemo:true });
-      return;
+      try { const r = await fetch("/.netlify/functions/check-plan", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email: em.toLowerCase() }) }); const d = await r.json(); if (d.plan) plan = d.plan; } catch{}
+      save({ id:"demo_"+btoa(em).slice(0,8), email:em.toLowerCase(), name:demo.name, plan, isDemo:true }); return;
     }
-
-    // Real users — Supabase Auth
     const data = await callAuth({ action:"signin", email:em, password:pw });
     if (data.error) throw new Error(data.error);
     if (data.token) localStorage.setItem("xr_token", data.token);
     if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
     save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:data.user.plan });
   };
-
   const signUp = async (em, pw, nm) => {
     if (!em||!pw||!nm) throw new Error("All fields required");
     if (pw.length<8) throw new Error("Password must be at least 8 characters");
-
     const data = await callAuth({ action:"signup", email:em, password:pw, name:nm });
     if (data.error) throw new Error(data.error);
     if (data.token) localStorage.setItem("xr_token", data.token);
     if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
     save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:"trial", trialStart:new Date().toISOString() });
   };
-
-  const signOut = () => {
-    setU(null);
-    localStorage.removeItem("xr_u");
-    localStorage.removeItem("xr_token");
-    localStorage.removeItem("xr_refresh");
-  };
-
+  const signOut = () => { setU(null); localStorage.removeItem("xr_u"); localStorage.removeItem("xr_token"); localStorage.removeItem("xr_refresh"); };
   const setPlan = p => save({ ...user, plan:p });
-  const updateName = async nm => {
-    if (user && !user.isDemo) {
-      await callAuth({ action:"update-name", email:user.email, name:nm });
-    }
-    save({ ...user, name:nm });
-  };
-
+  const updateName = async nm => { if (user && !user.isDemo) { await callAuth({ action:"update-name", email:user.email, name:nm }); } save({ ...user, name:nm }); };
   return <AuthCtx.Provider value={{ user,loading,signIn,signUp,signOut,setPlan,updateName }}>{children}</AuthCtx.Provider>;
 }
 const useAuth = () => useContext(AuthCtx);
 
-// ── Router ────────────────────────────────────────────────────────────────────
 const RouteCtx = createContext(null);
 function RouterProvider({ children }) {
   const get = () => window.location.hash.replace(/^#\/?/,"") || "home";
   const [page, setPage] = useState(get);
   const nav = to => { const p=to.replace(/^\//,""); window.location.hash="#/"+p; setPage(p); window.scrollTo(0,0); };
-  useEffect(() => {
-    const h = () => { setPage(get()); window.scrollTo(0,0); };
-    window.addEventListener("hashchange",h);
-    return () => window.removeEventListener("hashchange",h);
-  },[]);
+  useEffect(() => { const h = () => { setPage(get()); window.scrollTo(0,0); }; window.addEventListener("hashchange",h); return () => window.removeEventListener("hashchange",h); },[]);
   return <RouteCtx.Provider value={{ page,nav }}>{children}</RouteCtx.Provider>;
 }
 const useNav = () => useContext(RouteCtx);
 
-// ── QR encoder ────────────────────────────────────────────────────────────────
 function useQR() {
   const [ok,setOk] = useState(!!window.__xqr);
-  useEffect(() => {
-    if (window.__xqr) return;
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
-    s.onload = () => { window.__xqr=true; setOk(true); };
-    document.head.appendChild(s);
-  },[]);
+  useEffect(() => { if (window.__xqr) return; const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; s.onload = () => { window.__xqr=true; setOk(true); }; document.head.appendChild(s); },[]);
   return ok;
 }
 function QRBox({ value, fg=C.t1, bg=C.bg3, size=160, onUrl }) {
-  const ref = useRef(null);
-  const ready = useQR();
+  const ref = useRef(null); const ready = useQR();
   useEffect(() => {
     if (!ready||!ref.current||!window.QRCode) return;
     ref.current.innerHTML = "";
@@ -215,7 +160,6 @@ function QRBox({ value, fg=C.t1, bg=C.bg3, size=160, onUrl }) {
   return <div ref={ref} style={{ width:size,height:size,borderRadius:6,overflow:"hidden" }}/>;
 }
 
-// ── Primitives ────────────────────────────────────────────────────────────────
 function Wordmark({ sm }) {
   const sz = sm ? 15 : 18;
   return (
@@ -226,12 +170,7 @@ function Wordmark({ sm }) {
   );
 }
 function Tag({ children, color=C.vi, dot }) {
-  return (
-    <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:color+"18",color,border:`1px solid ${color}30`,borderRadius:99,padding:"2px 8px",fontSize:10,fontWeight:700,whiteSpace:"nowrap",letterSpacing:".02em" }}>
-      {dot && <span style={{ width:5,height:5,borderRadius:"50%",background:color,flexShrink:0 }}/>}
-      {children}
-    </span>
-  );
+  return <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:color+"18",color,border:`1px solid ${color}30`,borderRadius:99,padding:"2px 8px",fontSize:10,fontWeight:700,whiteSpace:"nowrap",letterSpacing:".02em" }}>{dot && <span style={{ width:5,height:5,borderRadius:"50%",background:color,flexShrink:0 }}/>}{children}</span>;
 }
 function Stat({ icon, label:lb, value, delta, accent=C.vi }) {
   return (
@@ -256,7 +195,6 @@ function Empty({ icon, title, body, cta }) {
   );
 }
 
-// ── Nav + Layout ──────────────────────────────────────────────────────────────
 const TABS = [
   { id:"dashboard",           icon:"⊞", label:"Home"      },
   { id:"dashboard/qr",        icon:"▦",  label:"QR"        },
@@ -274,13 +212,8 @@ function TopNav() {
       <div onClick={()=>nav("home")} style={{ cursor:"pointer" }}><Wordmark/></div>
       <div style={{ display:"flex",gap:8,alignItems:"center" }}>
         {!mob && <button onClick={()=>nav("pricing")} style={{ ...btnG(),padding:"7px 14px",fontSize:13,minHeight:36 }}>Pricing</button>}
-        {user
-          ? <button onClick={()=>nav("dashboard")} style={{ ...btnP(),fontSize:13,padding:"8px 16px",minHeight:36 }}>Dashboard →</button>
-          : <>
-              <button onClick={()=>nav("login")} style={{ ...btnG(),fontSize:13,padding:"7px 14px",minHeight:36 }}>Log in</button>
-              <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:13,padding:"8px 16px",minHeight:36 }}>Start free trial</button>
-            </>
-        }
+        {user ? <button onClick={()=>nav("dashboard")} style={{ ...btnP(),fontSize:13,padding:"8px 16px",minHeight:36 }}>Dashboard →</button>
+          : <><button onClick={()=>nav("login")} style={{ ...btnG(),fontSize:13,padding:"7px 14px",minHeight:36 }}>Log in</button><button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:13,padding:"8px 16px",minHeight:36 }}>Start free trial</button></>}
       </div>
     </header>
   );
@@ -330,9 +263,7 @@ function Sidebar() {
           <button onClick={()=>nav("pricing")} style={{ ...btnP(C.vi,true),fontSize:11,padding:"7px",minHeight:34 }}>View plan details</button>
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10,padding:"4px 2px" }}>
-          <div style={{ width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.vi},${C.fu})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0 }}>
-            {user?.name?.[0]?.toUpperCase()||"U"}
-          </div>
+          <div style={{ width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.vi},${C.fu})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0 }}>{user?.name?.[0]?.toUpperCase()||"U"}</div>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ fontSize:12,fontWeight:600,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{user?.name}</div>
             <div style={{ fontSize:10,color:C.t4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{user?.email}</div>
@@ -349,9 +280,7 @@ function MobAvatar() {
   const [open,setOpen] = useState(false);
   return (
     <div style={{ position:"relative" }}>
-      <div onClick={()=>setOpen(!open)} style={{ width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${C.vi},${C.fu})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,cursor:"pointer" }}>
-        {user?.name?.[0]?.toUpperCase()||"U"}
-      </div>
+      <div onClick={()=>setOpen(!open)} style={{ width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${C.vi},${C.fu})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,cursor:"pointer" }}>{user?.name?.[0]?.toUpperCase()||"U"}</div>
       {open && <>
         <div style={{ position:"fixed",inset:0,zIndex:298 }} onClick={()=>setOpen(false)}/>
         <div style={{ position:"absolute",top:40,right:0,background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,padding:8,minWidth:190,zIndex:299,boxShadow:"0 8px 32px rgba(0,0,0,.7)" }}>
@@ -399,7 +328,6 @@ function PgHead({ title, sub, action }) {
   );
 }
 
-// ── Legal data ────────────────────────────────────────────────────────────────
 const PRIVACY = [
   { h:"1. Introduction", b:"Xhibitur LLC (\"we\", \"us\", \"our\") operates Xhibitur Rewards. This Privacy Policy explains how we collect, use, and protect your information. By using Xhibitur Rewards you agree to this policy." },
   { h:"2. Information We Collect", b:"We collect your email when you sign up, plus device info, visit data (timestamp, business ID, visit count), and usage data. We do not collect payment info or government ID." },
@@ -443,10 +371,7 @@ function LegalModal({ type, onClose }) {
     <div style={{ position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.9)",backdropFilter:"blur(8px)",display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20 }}>
       <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:mob?"20px 20px 0 0":18,width:"100%",maxWidth:mob?undefined:620,maxHeight:mob?"92vh":"88vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.9)",animation:mob?"sheetUp .3s ease":"fadeUp .2s ease" }}>
         <div style={{ padding:"18px 20px",background:C.bg3,borderBottom:`1px solid ${C.b1}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
-          <div>
-            <div style={{ fontWeight:800,fontSize:16,color:C.t1 }}>{title}</div>
-            <div style={{ fontSize:11,color:C.t4,marginTop:2 }}>Xhibitur LLC · Effective January 1, 2026</div>
-          </div>
+          <div><div style={{ fontWeight:800,fontSize:16,color:C.t1 }}>{title}</div><div style={{ fontSize:11,color:C.t4,marginTop:2 }}>Xhibitur LLC · Effective January 1, 2026</div></div>
           <button onClick={onClose} style={{ background:C.bg4,border:`1px solid ${C.b3}`,color:C.t4,width:36,height:36,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>×</button>
         </div>
         <div style={{ flex:1,overflowY:"auto",padding:mob?"20px 18px":"24px 28px",WebkitOverflowScrolling:"touch" }}>
@@ -465,7 +390,6 @@ function LegalModal({ type, onClose }) {
   );
 }
 
-// ── Auth pages ────────────────────────────────────────────────────────────────
 function AuthShell({ title, sub, children }) {
   const { nav } = useNav(); const w=useW(); const mob=w<640;
   return (
@@ -538,9 +462,8 @@ function ForgotPassword() {
 function ResetPassword() {
   const { nav } = useNav();
   const [pw,setPw]=useState(""); const [pw2,setPw2]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [done,setDone]=useState(false);
-  // Get token from URL hash — Supabase puts it after #access_token=
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?reset-password\??/,"").replace(/^#/,""));
-const token = hashParams.get("access_token") || new URLSearchParams(window.location.search).get("access_token") || "";
+  const token = hashParams.get("access_token") || new URLSearchParams(window.location.search).get("access_token") || "";
   const go = async e => {
     e.preventDefault(); setErr("");
     if (pw !== pw2) { setErr("Passwords don't match."); return; }
@@ -563,8 +486,8 @@ const token = hashParams.get("access_token") || new URLSearchParams(window.locat
             <button onClick={()=>nav("login")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Sign in →</button>
           </div>
         : <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
-<div><label style={lbl}>New password</label><PwInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp}/></div>
-           <div><label style={lbl}>Confirm password</label><PwInput value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Same password again" style={dInp}/></div>
+            <div><label style={lbl}>New password</label><PwInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp}/></div>
+            <div><label style={lbl}>Confirm password</label><PwInput value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Same password again" style={dInp}/></div>
             {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
             <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Updating…":"Set new password →"}</button>
           </form>
@@ -579,57 +502,37 @@ function Signup() {
   const [ageOk,setAgeOk]=useState(false); const [termsOk,setTermsOk]=useState(false);
   const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
   const [legal,setLegal]=useState(null);
-
   const go = async e => {
     e.preventDefault();
     if (!ageOk) { setErr("You must confirm you are 13 years of age or older to create an account."); return; }
     if (!termsOk) { setErr("You must agree to the Terms of Use and Privacy Policy to continue."); return; }
     setErr(""); setBusy(true);
-    try { await signUp(em,pw,nm); nav("dashboard"); }
-    catch(x){ setErr(x.message); }
-    finally{ setBusy(false); }
+    try { await signUp(em,pw,nm); nav("dashboard"); } catch(x){ setErr(x.message); } finally{ setBusy(false); }
   };
-
   const row = { display:"flex",alignItems:"flex-start",gap:12,padding:"14px",background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:10 };
-
-  const CustomCheckbox = ({ id, checked, onChange }) => (
-    <div
-      onClick={()=>onChange({ target:{ checked:!checked } })}
-      style={{
-        width:22, height:22, borderRadius:6, flexShrink:0, marginTop:1,
-        border:`2px solid ${checked ? C.vi : C.b3}`,
-        background: checked ? C.vi : "transparent",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        cursor:"pointer", transition:"all .15s",
-      }}
-    >
-      {checked && <span style={{ color:"#000", fontSize:13, fontWeight:900, lineHeight:1 }}>✓</span>}
+  const CustomCheckbox = ({ checked, onChange }) => (
+    <div onClick={()=>onChange({ target:{ checked:!checked } })} style={{ width:22,height:22,borderRadius:6,flexShrink:0,marginTop:1,border:`2px solid ${checked?C.vi:C.b3}`,background:checked?C.vi:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s" }}>
+      {checked && <span style={{ color:"#000",fontSize:13,fontWeight:900,lineHeight:1 }}>✓</span>}
     </div>
   );
-
   return (
     <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49.99/month after.">
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
-     {[{ lb:"Business name",val:nm,set:setNm,type:"text",ph:"Acme Coffee Co." },{ lb:"Email",val:em,set:setEm,type:"email",ph:"you@business.com" },{ lb:"Password",val:pw,set:setPw,type:"password",ph:"8+ characters" }].map(f=>(
-          <div key={f.lb}><label style={lbl}>{f.lb}</label>{f.type==="password"
-  ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
-  : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-}</div>
-        ))}
+        <div><label style={lbl}>Business name</label><input type="text" value={nm} onChange={e=>setNm(e.target.value)} placeholder="Acme Coffee Co." style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+        <div><label style={lbl}>Email</label><input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="you@business.com" style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+        <div><label style={lbl}>Password</label><PwInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="8+ characters" style={dInp}/></div>
         <div style={row}>
-          <CustomCheckbox id="age" checked={ageOk} onChange={e=>setAgeOk(e.target.checked)}/>
-          <label htmlFor="age" onClick={()=>setAgeOk(!ageOk)} style={{ fontSize:13,color:C.t3,lineHeight:1.55,cursor:"pointer",flex:1 }}>
-            I confirm I am <strong style={{ color:C.t2 }}>13 years of age or older</strong>. Xhibitur Rewards is not intended for persons under 13.
-          </label>
+          <CustomCheckbox checked={ageOk} onChange={e=>setAgeOk(e.target.checked)}/>
+          <label onClick={()=>setAgeOk(!ageOk)} style={{ fontSize:13,color:C.t3,lineHeight:1.55,cursor:"pointer",flex:1 }}>I confirm I am <strong style={{ color:C.t2 }}>13 years of age or older</strong>. Xhibitur Rewards is not intended for persons under 13.</label>
         </div>
         <div style={row}>
-          <CustomCheckbox id="terms" checked={termsOk} onChange={e=>setTermsOk(e.target.checked)}/>
-          <label htmlFor="terms" style={{ fontSize:13,color:C.t3,lineHeight:1.55,flex:1 }}>
+          <CustomCheckbox checked={termsOk} onChange={e=>setTermsOk(e.target.checked)}/>
+          <label style={{ fontSize:13,color:C.t3,lineHeight:1.55,flex:1 }}>
             <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}>I agree to Xhibitur LLC's </span>
             <span onClick={e=>{e.preventDefault();setLegal("terms");}} style={{ color:C.vi,fontWeight:600,cursor:"pointer",textDecoration:"underline" }}>Terms of Use</span>
             <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}> and </span>
             <span onClick={e=>{e.preventDefault();setLegal("privacy");}} style={{ color:C.vi,fontWeight:600,cursor:"pointer",textDecoration:"underline" }}>Privacy Policy</span>
-            <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}>, and consent to receive promotional SMS and email from Xhibitur LLC. Msg & data rates may apply. Reply STOP to opt out.</span>
+            <span onClick={()=>setTermsOk(!termsOk)} style={{ cursor:"pointer" }}>, and consent to receive promotional SMS and email from Xhibitur LLC. Msg &amp; data rates may apply. Reply STOP to opt out.</span>
           </label>
         </div>
         {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
@@ -641,14 +544,13 @@ function Signup() {
   );
 }
 
-// ── Landing ───────────────────────────────────────────────────────────────────
 const FEATS = [
-  { icon:"▦", title:"Smart QR Codes",      desc:"One code, infinite destinations. Route by device, time, weather, location, loyalty and more.", col:C.vi },
-  { icon:"◆", title:"Customer Rewards",    desc:"Points, stamps, cashback and VIP tiers that keep customers coming back on autopilot.", col:C.fu },
-  { icon:"◈", title:"Live Analytics",      desc:"Scan volume, device split, redemptions and member growth in real time.", col:C.em },
+  { icon:"▦", title:"Smart QR Codes", desc:"One code, infinite destinations. Route by device, time, weather, location, loyalty and more.", col:C.vi },
+  { icon:"◆", title:"Customer Rewards", desc:"Points, stamps, cashback and VIP tiers that keep customers coming back on autopilot.", col:C.fu },
+  { icon:"◈", title:"Live Analytics", desc:"Scan volume, device split, redemptions and member growth in real time.", col:C.em },
   { icon:"⚡", title:"Win-Back Automation", desc:"Customers inactive 60+ days automatically get a custom offer. Runs itself 24/7.", col:C.cy },
-  { icon:"📱", title:"Mobile Dashboard",   desc:"Manage everything from your phone. Built mobile-first for busy owners.", col:C.am },
-  { icon:"🖨",  title:"Instant Print-Ready Sign",  desc:"Download a professional loyalty sign in seconds. Print at any printer and display at your counter today — no design skills needed.", col:C.bl },
+  { icon:"📱", title:"Mobile Dashboard", desc:"Manage everything from your phone. Built mobile-first for busy owners.", col:C.am },
+  { icon:"🖨", title:"Instant Print-Ready Sign", desc:"Download a professional loyalty sign in seconds. Print at any printer and display at your counter today — no design skills needed.", col:C.bl },
 ];
 const ALL_FEATURES = [
   "Unlimited Smart QR codes","Unlimited Rewards programs","Unlimited monthly scans",
@@ -664,8 +566,6 @@ function Landing() {
   return (
     <div style={{ background:C.bg,minHeight:"100vh" }}>
       <TopNav/>
-
-      {/* Hero */}
       <section style={{ position:"relative",overflow:"hidden",textAlign:"center",padding:`clamp(64px,10vw,120px) ${px}px clamp(56px,8vw,88px)`,borderBottom:`1px solid ${C.b1}` }}>
         <div style={{ position:"absolute",top:"25%",left:"50%",transform:"translateX(-50%)",width:640,height:420,background:`radial-gradient(ellipse,rgba(212,160,23,.18) 0%,transparent 68%)`,pointerEvents:"none" }}/>
         <div style={{ position:"relative",maxWidth:700,margin:"0 auto" }}>
@@ -677,9 +577,7 @@ function Landing() {
             <span style={{ color:C.t1,WebkitTextFillColor:C.t1 }}>The smarter way to</span><br/>
             <span style={{ background:`linear-gradient(135deg,${C.vi},${C.fu},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>build loyalty.</span>
           </h1>
-          <p style={{ fontSize:`clamp(15px,2.5vw,18px)`,color:C.t3,lineHeight:1.7,maxWidth:480,margin:"0 auto 36px" }}>
-            Dynamic QR codes that always route to the right destination — paired with rewards that bring customers back automatically.
-          </p>
+          <p style={{ fontSize:`clamp(15px,2.5vw,18px)`,color:C.t3,lineHeight:1.7,maxWidth:480,margin:"0 auto 36px" }}>Dynamic QR codes that always route to the right destination — paired with rewards that bring customers back automatically.</p>
           <div style={{ display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap" }}>
             <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 24px":"14px 32px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start 14-day free trial</button>
             <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:mob?15:16,padding:mob?"14px 20px":"14px 28px",width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>See how it works</button>
@@ -687,8 +585,6 @@ function Landing() {
           <p style={{ marginTop:16,fontSize:12,color:C.t4 }}>14-day free trial · No credit card · $49.99/mo after · Cancel any time</p>
         </div>
       </section>
-
-      {/* Features */}
       <section style={{ padding:`clamp(48px,7vw,88px) ${px}px`,maxWidth:1400,margin:"0 auto" }}>
         <div style={{ textAlign:"center",marginBottom:40 }}>
           <h2 style={{ fontSize:`clamp(22px,4vw,38px)`,fontWeight:800,letterSpacing:"-.04em",marginBottom:10,color:C.t1 }}>Everything your business needs</h2>
@@ -696,9 +592,7 @@ function Landing() {
         </div>
         <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":tab?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${C.b1}`,borderRadius:16,overflow:"hidden" }}>
           {FEATS.map(f=>(
-            <div key={f.title} style={{ background:C.bg2,padding:`${mob?20:26}px`,borderBottom:`1px solid ${C.b1}`,transition:"background .2s" }}
-              onMouseEnter={e=>e.currentTarget.style.background=C.bg3}
-              onMouseLeave={e=>e.currentTarget.style.background=C.bg2}>
+            <div key={f.title} style={{ background:C.bg2,padding:`${mob?20:26}px`,borderBottom:`1px solid ${C.b1}`,transition:"background .2s" }} onMouseEnter={e=>e.currentTarget.style.background=C.bg3} onMouseLeave={e=>e.currentTarget.style.background=C.bg2}>
               <div style={{ width:38,height:38,borderRadius:8,background:f.col+"16",border:`1px solid ${f.col}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:f.col,marginBottom:14 }}>{f.icon}</div>
               <div style={{ fontSize:14,fontWeight:700,color:C.t1,marginBottom:6 }}>{f.title}</div>
               <div style={{ fontSize:13,color:C.t4,lineHeight:1.65 }}>{f.desc}</div>
@@ -706,8 +600,6 @@ function Landing() {
           ))}
         </div>
       </section>
-
-      {/* Single plan section */}
       <section style={{ padding:`clamp(48px,7vw,80px) ${px}px`,borderTop:`1px solid ${C.b1}`,borderBottom:`1px solid ${C.b1}` }}>
         <div style={{ maxWidth:700,margin:"0 auto",textAlign:"center" }}>
           <Tag color={C.vi}>Simple pricing</Tag>
@@ -722,131 +614,24 @@ function Landing() {
               </div>
               <div style={{ fontSize:13,color:C.t4,marginBottom:28 }}>or $490.99/year — 2 months free</div>
               <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:mob?8:10,marginBottom:28,textAlign:"left" }}>
-                {ALL_FEATURES.map(f=>(
-                  <div key={f} style={{ display:"flex",alignItems:"center",gap:9 }}>
-                    <span style={{ color:C.vi,fontSize:13,fontWeight:700,flexShrink:0 }}>✓</span>
-                    <span style={{ fontSize:mob?13:14,color:C.t2 }}>{f}</span>
-                  </div>
-                ))}
+                {ALL_FEATURES.map(f=>(<div key={f} style={{ display:"flex",alignItems:"center",gap:9 }}><span style={{ color:C.vi,fontSize:13,fontWeight:700,flexShrink:0 }}>✓</span><span style={{ fontSize:mob?13:14,color:C.t2 }}>{f}</span></div>))}
               </div>
-              <button onClick={()=>nav("signup")} style={{ ...btnP(C.vi,true),fontSize:mob?15:16,padding:"15px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:380 }}>
-                Start 14-day free trial
-              </button>
+              <button onClick={()=>nav("signup")} style={{ ...btnP(C.vi,true),fontSize:mob?15:16,padding:"15px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:380 }}>Start 14-day free trial</button>
               <div style={{ marginTop:12,fontSize:12,color:C.t4 }}>No credit card required · $49.99/mo after trial · Cancel any time</div>
             </div>
           </div>
           <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:14 }}>See full details & FAQ →</button>
         </div>
       </section>
-
-      {/* How It Works */}
-      <section style={{ padding:`clamp(48px,7vw,88px) ${px}px`, borderTop:`1px solid ${C.b1}`, background:C.bg1 }}>
-        <div style={{ maxWidth:1100, margin:"0 auto" }}>
-
-          {/* Section header */}
-          <div style={{ textAlign:"center", marginBottom:mob?40:56 }}>
-            <Tag color={C.vi}>How it works</Tag>
-            <h2 style={{ fontSize:`clamp(24px,4vw,40px)`, fontWeight:900, letterSpacing:"-.04em", color:C.t1, marginTop:16, marginBottom:12 }}>
-              Set up in minutes.<br/>Run it from your phone.
-            </h2>
-            <p style={{ color:C.t4, fontSize:mob?14:16, maxWidth:460, margin:"0 auto", lineHeight:1.65 }}>
-              No app to download. No developer needed. Everything runs in your mobile browser — from setup to managing customers.
-            </p>
-          </div>
-
-          {/* Steps */}
-          <div style={{ display:"grid", gridTemplateColumns:mob?"1fr":tab?"1fr 1fr":"repeat(3,1fr)", gap:mob?12:16, marginBottom:mob?40:56 }}>
-            {[
-              {
-                step:"01",
-                icon:"📱",
-                title:"Sign up on your phone",
-                body:"Create your account in under 2 minutes using just your phone browser. No app to download, no laptop needed. You'll be inside the dashboard immediately.",
-                detail:"Works on iPhone, Android, any browser",
-                col:C.vi,
-              },
-              {
-                step:"02",
-                icon:"⚡",
-                title:"Create your QR & rewards in 60 seconds",
-                body:"Pick a template — restaurant, retail, or event — and your smart QR code and rewards program are pre-configured and ready. Customise the details, then go live instantly.",
-                detail:"Templates do the heavy lifting for you",
-                col:C.fu,
-              },
-              {
-                step:"03",
-                icon:"🔄",
-                title:"Customers come back automatically",
-                body:"Print or display your QR code anywhere. Customers scan to join your loyalty program. The win-back rule quietly sends offers to anyone who goes quiet — with zero effort from you.",
-                detail:"Runs 24/7 in the background, hands-free",
-                col:C.em,
-              },
-            ].map((s, i) => (
-              <div key={s.step} style={{ position:"relative" }}>
-                {/* Connector line between steps on desktop */}
-                {!mob && !tab && i < 2 && (
-                  <div style={{ position:"absolute", top:36, right:-8, width:16, height:2, background:`linear-gradient(90deg,${s.col}60,transparent)`, zIndex:1 }}/>
-                )}
-                <div style={{ ...card(), padding:mob?"22px 20px":"28px 26px", height:"100%", borderTop:`2px solid ${s.col}`, position:"relative", overflow:"hidden" }}>
-                  {/* Step number watermark */}
-                  <div style={{ position:"absolute", top:-10, right:16, fontSize:72, fontWeight:900, color:s.col, opacity:.06, lineHeight:1, letterSpacing:"-.05em", userSelect:"none" }}>{s.step}</div>
-
-                  {/* Icon */}
-                  <div style={{ width:52, height:52, borderRadius:14, background:`${s.col}16`, border:`1px solid ${s.col}25`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, marginBottom:18 }}>
-                    {s.icon}
-                  </div>
-
-                  {/* Step label */}
-                  <div style={{ fontSize:10, fontWeight:700, color:s.col, letterSpacing:".1em", marginBottom:8 }}>STEP {s.step}</div>
-
-                  {/* Title */}
-                  <div style={{ fontSize:mob?16:18, fontWeight:800, color:C.t1, letterSpacing:"-.02em", marginBottom:10, lineHeight:1.2 }}>{s.title}</div>
-
-                  {/* Body */}
-                  <p style={{ fontSize:mob?13:14, color:C.t3, lineHeight:1.72, marginBottom:16 }}>{s.body}</p>
-
-                  {/* Detail chip */}
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:7, background:s.col+"12", border:`1px solid ${s.col}22`, borderRadius:99, padding:"5px 12px" }}>
-                    <span style={{ width:5, height:5, borderRadius:"50%", background:s.col, flexShrink:0 }}/>
-                    <span style={{ fontSize:11, fontWeight:600, color:s.col }}>{s.detail}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Phone callout bar */}
-          <div style={{ ...card(true), border:`1px solid ${C.vi}30`, borderRadius:16, padding:mob?"22px 20px":"28px 36px", display:"flex", alignItems:mob?"flex-start":"center", gap:mob?16:24, flexWrap:"wrap", background:`linear-gradient(135deg,${C.viDim},transparent)` }}>
-            <div style={{ width:52, height:52, borderRadius:14, background:C.vi+"18", border:`1px solid ${C.vi}25`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>📱</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:mob?15:17, fontWeight:800, color:C.t1, marginBottom:5, letterSpacing:"-.02em" }}>
-                No app to download. No account required.
-              </div>
-              <div style={{ fontSize:mob?13:14, color:C.t3, lineHeight:1.65 }}>
-                Xhibitur Rewards runs entirely through your customers' phone or web browser. Customers just scan and earn. For customers who want their stamps to follow them across devices they can optionally save their progress with their email.
-              </div>
-            </div>
-            <button onClick={()=>nav("signup")} style={{ ...btnP(), fontSize:mob?14:15, padding:"12px 22px", whiteSpace:"nowrap", width:mob?"100%":"auto", boxShadow:`0 0 24px ${C.viGlo}` }}>
-              Try it on your phone →
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
       <section style={{ padding:`clamp(48px,7vw,80px) ${px}px`,textAlign:"center",borderTop:`1px solid ${C.b1}`,background:C.bg1 }}>
-        <h2 style={{ fontSize:`clamp(26px,5vw,52px)`,fontWeight:900,letterSpacing:"-.05em",marginBottom:14,lineHeight:1.05,color:C.t1 }}>
-          Start building loyalty<br/><span style={{ color:C.vi }}>today.</span>
-        </h2>
+        <h2 style={{ fontSize:`clamp(26px,5vw,52px)`,fontWeight:900,letterSpacing:"-.05em",marginBottom:14,lineHeight:1.05,color:C.t1 }}>Start building loyalty<br/><span style={{ color:C.vi }}>today.</span></h2>
         <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:28 }}>14-day free trial. No credit card. Cancel any time.</p>
         <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 28px":"15px 36px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free trial →</button>
         <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49.99/month after trial · Cancel any time</div>
       </section>
-
       <footer style={{ background:C.bg,borderTop:`1px solid ${C.b1}`,padding:`20px ${px}px` }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,marginBottom:12 }}>
-          <Wordmark sm/>
-          <span style={{ color:C.t4,fontSize:11 }}>© 2026 Xhibitur LLC. All rights reserved.</span>
+          <Wordmark sm/><span style={{ color:C.t4,fontSize:11 }}>© 2026 Xhibitur LLC. All rights reserved.</span>
         </div>
         <div style={{ display:"flex",gap:16,flexWrap:"wrap",borderTop:`1px solid ${C.b1}`,paddingTop:12 }}>
           <span onClick={()=>setFooterLegal("privacy")} style={{ fontSize:11,color:C.t4,cursor:"pointer",textDecoration:"underline" }}>Privacy Policy</span>
@@ -860,7 +645,6 @@ function Landing() {
   );
 }
 
-// ── Pricing Page ──────────────────────────────────────────────────────────────
 const FAQ = [
   { q:"What happens after the 14-day trial?", a:"Your account converts to $49.99/month. We send a reminder 3 days before — you're never surprised. Cancel any time before then and you won't be charged a penny." },
   { q:"Do I need a credit card to start?", a:"No. Start with just your email. We only ask for payment details when your trial ends." },
@@ -881,53 +665,33 @@ function PricingPage() {
   const [err,setErr] = useState("");
   const price = ann ? 40.99 : 49.99;
   const px = mob?18:28;
-
   const startCheckout = async () => {
     if (!user) { nav("signup"); return; }
     if (user.plan === "pro") { nav("dashboard"); return; }
     setLoading(true); setErr("");
     try {
-      const res = await fetch("/.netlify/functions/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          priceId: ann
-            ? "price_1TSjbIId1xxQI6ctdhI42SiU"
-            : "price_1TSjbIId1xxQI6cthyjPZG9f",
-          email: user.email,
-        }),
-      });
+      const res = await fetch("/.netlify/functions/create-checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ priceId:ann?"price_1TSjbIId1xxQI6ctdhI42SiU":"price_1TSjbIId1xxQI6cthyjPZG9f", email:user.email }) });
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
       else { setErr("Something went wrong. Please try again or email info@xhibitur.com"); }
-    } catch(e) {
-      setErr("Something went wrong. Please try again or email info@xhibitur.com");
-    } finally { setLoading(false); }
+    } catch(e) { setErr("Something went wrong. Please try again or email info@xhibitur.com"); }
+    finally { setLoading(false); }
   };
   return (
     <div style={{ minHeight:"100vh",background:C.bg }}>
       <TopNav/>
       <div style={{ maxWidth:1000,margin:"0 auto",padding:`clamp(40px,6vw,80px) ${px}px` }}>
-
-        {/* Header */}
         <div style={{ textAlign:"center",marginBottom:48 }}>
           <Tag color={C.vi}>Simple pricing</Tag>
-          <h1 style={{ fontSize:`clamp(30px,5vw,56px)`,fontWeight:900,letterSpacing:"-.05em",color:C.t1,marginBottom:14,marginTop:16,lineHeight:1.05 }}>
-            One plan.<br/>Everything included.
-          </h1>
-          <p style={{ color:C.t4,fontSize:mob?15:17,maxWidth:460,margin:"0 auto 28px",lineHeight:1.65 }}>
-            No tiers. No feature locks. No surprises. Everything your business needs for one flat price.
-          </p>
+          <h1 style={{ fontSize:`clamp(30px,5vw,56px)`,fontWeight:900,letterSpacing:"-.05em",color:C.t1,marginBottom:14,marginTop:16,lineHeight:1.05 }}>One plan.<br/>Everything included.</h1>
+          <p style={{ color:C.t4,fontSize:mob?15:17,maxWidth:460,margin:"0 auto 28px",lineHeight:1.65 }}>No tiers. No feature locks. No surprises. Everything your business needs for one flat price.</p>
           <div style={{ display:"inline-flex",background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:99,padding:4 }}>
             {[["Monthly",false],["Annual (2 months free)",true]].map(([lb,v])=>(
               <button key={lb} onClick={()=>setAnn(v)} style={{ padding:mob?"8px 14px":"8px 22px",borderRadius:99,border:"none",background:ann===v?C.vi:"transparent",color:ann===v?"#fff":C.t4,fontSize:mob?12:13,fontWeight:600,cursor:"pointer",transition:"all .2s",minHeight:40 }}>{lb}</button>
             ))}
           </div>
         </div>
-
-        {/* Plan card */}
         <div style={{ ...card(true),border:`1px solid ${C.vi}50`,boxShadow:`0 0 80px ${C.viGlo}`,borderRadius:20,overflow:"hidden",marginBottom:56 }}>
-          {/* Price */}
           <div style={{ background:`linear-gradient(135deg,${C.bg3},${C.bg4})`,padding:mob?"32px 24px":"52px 64px",textAlign:"center",borderBottom:`1px solid ${C.b2}` }}>
             <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:16 }}>PRO PLAN — EVERYTHING INCLUDED</div>
             <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"center",gap:6,marginBottom:6 }}>
@@ -937,59 +701,21 @@ function PricingPage() {
                 {ann && <div style={{ fontSize:12,color:C.vi,fontWeight:600 }}>Save $108.89/yr</div>}
               </div>
             </div>
-            {ann
-              ? <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>Billed as $490.99/year</div>
-              : <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>or $490.99/year — 2 months free</div>
-            }
+            {ann ? <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>Billed as $490.99/year</div> : <div style={{ fontSize:14,color:C.t4,marginBottom:32 }}>or $490.99/year — 2 months free</div>}
             {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 14px",color:C.err,fontSize:13,marginBottom:16,maxWidth:400,margin:"0 auto 16px" }}>{err}</div>}
             <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:mob?15:17,padding:mob?"14px 28px":"16px 52px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:400,opacity:loading?.7:1 }}>
-              {loading ? "Redirecting to checkout…" : user?.plan==="pro" ? "Go to dashboard →" : "Start 14-day free trial"}
+              {loading?"Redirecting to checkout…":user?.plan==="pro"?"Go to dashboard →":"Start 14-day free trial"}
             </button>
             <div style={{ marginTop:14,fontSize:13,color:C.t4 }}>No credit card required · Cancel any time</div>
           </div>
-
-          {/* Features */}
-          <div style={{ padding:mob?"28px 20px":"44px 64px" }}>
-            <div style={{ fontSize:12,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".07em",marginBottom:28,textAlign:"center" }}>Everything included — no exceptions</div>
-            <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:mob?16:22 }}>
-              {[
-                { icon:"▦", title:"Unlimited Smart QR Codes",    desc:"Create as many dynamic QR codes as you need. No caps, ever." },
-                { icon:"◆", title:"Unlimited Rewards Programs",  desc:"Points, stamps, cashback, referrals, tiers — all included." },
-                { icon:"◈", title:"Full Analytics Dashboard",    desc:"Scan volume, device split, member growth and redemptions in real time." },
-                { icon:"⚡", title:"Win-Back Automation",         desc:"Inactive customers automatically receive a custom offer. Runs 24/7." },
-                { icon:"📱", title:"Mobile-First Dashboard",     desc:"Manage everything from your phone. Built for busy owners on the go." },
-                { icon:"▦", title:"All 10 Smart Rule Types",     desc:"Device, time, weather, language, location, scan count, loyalty, event, inventory." },
-                { icon:"↗", title:"CSV Data Export",             desc:"Download your full scan history and member data whenever you need it." },
-                { icon:"🌐", title:"Custom Domain Support",      desc:"Point your own domain to your QR redirect engine." },
-                { icon:"🎪", title:"Auto-Pilot Templates",       desc:"Restaurant, retail, event and salon templates. Launch in 60 seconds." },
-                { icon:"✉️", title:"Priority Email Support",     desc:"Real humans, real answers within 24 hours." },
-              ].map(f=>(
-                <div key={f.title} style={{ display:"flex",gap:14,alignItems:"flex-start" }}>
-                  <div style={{ width:36,height:36,borderRadius:8,background:C.vi+"18",border:`1px solid ${C.vi}25`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0 }}>{f.icon}</div>
-                  <div>
-                    <div style={{ fontSize:14,fontWeight:600,color:C.t1,marginBottom:3 }}>{f.title}</div>
-                    <div style={{ fontSize:12,color:C.t4,lineHeight:1.6 }}>{f.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom CTA */}
           <div style={{ borderTop:`1px solid ${C.b2}`,padding:mob?"24px 20px":"36px 64px",background:C.bg3,textAlign:"center" }}>
-            <div style={{ fontSize:mob?18:22,fontWeight:800,color:C.t1,marginBottom:8,letterSpacing:"-.02em" }}>
-              One customer brought back pays for the whole month.
-            </div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:24,maxWidth:500,margin:"0 auto 24px",lineHeight:1.65 }}>
-              The win-back rule generates more than $49.99 in recovered revenue for most businesses within their first 30 days.
-            </div>
+            <div style={{ fontSize:mob?18:22,fontWeight:800,color:C.t1,marginBottom:8,letterSpacing:"-.02em" }}>One customer brought back pays for the whole month.</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:24,maxWidth:500,margin:"0 auto 24px",lineHeight:1.65 }}>The win-back rule generates more than $49.99 in recovered revenue for most businesses within their first 30 days.</div>
             <button onClick={startCheckout} disabled={loading} style={{ ...btnP(C.vi,mob),fontSize:15,padding:"13px 32px",maxWidth:340,opacity:loading?.7:1 }}>
-              {loading ? "Redirecting…" : user?"Start free trial — no card needed":"Start free trial — no card needed"}
+              {loading?"Redirecting…":"Start free trial — no card needed"}
             </button>
           </div>
         </div>
-
-        {/* FAQ */}
         <div style={{ maxWidth:680,margin:"0 auto" }}>
           <h2 style={{ fontSize:mob?22:30,fontWeight:800,color:C.t1,letterSpacing:"-.03em",marginBottom:28,textAlign:"center" }}>Common questions</h2>
           {FAQ.map((f,i)=>(
@@ -1005,7 +731,6 @@ function PricingPage() {
           </div>
         </div>
       </div>
-
       <footer style={{ background:C.bg,borderTop:`1px solid ${C.b1}`,padding:`20px ${px}px`,marginTop:56 }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,marginBottom:10 }}>
           <Wordmark sm/><span style={{ color:C.t4,fontSize:11 }}>© 2026 Xhibitur LLC. All rights reserved.</span>
@@ -1022,9 +747,6 @@ function PricingPage() {
   );
 }
 
-// ── Dashboard Home ────────────────────────────────────────────────────────────
-const FEED = [];
-
 function DashHome() {
   const { user } = useAuth(); const { nav } = useNav();
   const w=useW(); const mob=w<640;
@@ -1034,7 +756,6 @@ function DashHome() {
   return (
     <DashShell>
       <PgHead title={`${greet}, ${user?.name?.split(" ")[0]||"there"} 👋`} sub="Your Xhibitur Rewards overview."/>
-
       {isTrial && (
         <div style={{ ...card(),padding:"16px 18px",marginBottom:18,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",border:`1px solid ${C.vi}30`,background:C.viDim }}>
           <div>
@@ -1044,22 +765,20 @@ function DashHome() {
           <button onClick={()=>nav("pricing")} style={{ ...btnP(),fontSize:13,padding:"9px 18px",width:mob?"100%":"auto" }}>Activate plan →</button>
         </div>
       )}
-
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
         <Stat icon="▦" label="QR Scans" value="0" accent={C.vi}/>
-<Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
-<Stat icon="👥" label="Members" value="0" accent={C.em}/>
-<Stat icon="◈" label="Growth" value="0%" accent={C.cy}/>
+        <Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
+        <Stat icon="👥" label="Members" value="0" accent={C.em}/>
+        <Stat icon="◈" label="Growth" value="0%" accent={C.cy}/>
       </div>
-
       <div style={{ ...card(),padding:mob?16:20,marginBottom:14 }}>
         <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Quick actions</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
           {[
-            { icon:"▦",lbl:"New Smart QR",  desc:"Dynamic routing",  to:"dashboard/qr",        col:C.vi },
-            { icon:"◆",lbl:"New Rewards",   desc:"Points & stamps",   to:"dashboard/rewards",   col:C.fu },
-            { icon:"◈",lbl:"Analytics",     desc:"Scans & data",      to:"dashboard/analytics", col:C.em },
-            { icon:"🏷",lbl:"Order Stickers",desc:"Co-branded vinyl",  to:"dashboard/stickers",  col:C.am },
+            { icon:"▦",lbl:"New Smart QR",   desc:"Dynamic routing",  to:"dashboard/qr",        col:C.vi },
+            { icon:"◆",lbl:"New Rewards",    desc:"Points & stamps",   to:"dashboard/rewards",   col:C.fu },
+            { icon:"◈",lbl:"Analytics",      desc:"Scans & data",      to:"dashboard/analytics", col:C.em },
+            { icon:"🏷",lbl:"Order Stickers", desc:"Co-branded vinyl",  to:"dashboard/stickers",  col:C.am },
           ].map(a=>(
             <div key={a.to} onClick={()=>nav(a.to)} style={{ display:"flex",alignItems:"flex-start",gap:10,padding:mob?12:14,background:C.bg3,border:`1px solid ${C.b1}`,borderRadius:10,cursor:"pointer",borderLeft:`2px solid ${a.col}`,minHeight:56,transition:"background .12s" }}
               onMouseEnter={e=>e.currentTarget.style.background=a.col+"10"}
@@ -1070,21 +789,14 @@ function DashHome() {
           ))}
         </div>
       </div>
-
       <div style={{ ...card(),padding:mob?16:20 }}>
         <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Live activity</div>
-        {FEED.map((f,i)=>(
-          <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:i<FEED.length-1?`1px solid ${C.b1}`:"none" }}>
-            <div style={{ width:32,height:32,borderRadius:"50%",background:f.col+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:f.col,flexShrink:0 }}>{f.icon}</div>
-            <div style={{ flex:1 }}><div style={{ fontSize:13,color:C.t2,fontWeight:500 }}>{f.text}</div><div style={{ fontSize:11,color:C.t4 }}>{f.time}</div></div>
-          </div>
-        ))}
+        <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"24px 0" }}>No activity yet. Activity will appear as customers scan your QR codes.</div>
       </div>
     </DashShell>
   );
 }
 
-// ── QR Page ───────────────────────────────────────────────────────────────────
 const RT=[{id:"device",lb:"Device",icon:"📱",col:C.vi},{id:"time",lb:"Time",icon:"🕐",col:C.am},{id:"day",lb:"Day",icon:"📅",col:C.em},{id:"weather",lb:"Weather",icon:"🌤",col:C.cy},{id:"language",lb:"Language",icon:"🌐",col:C.fu},{id:"location",lb:"Location",icon:"📍",col:C.ro},{id:"scan_count",lb:"Scan Count",icon:"🔢",col:C.am},{id:"loyalty",lb:"Customer",icon:"⭐",col:C.vi},{id:"event",lb:"Event",icon:"🎪",col:C.cy},{id:"inventory",lb:"Inventory",icon:"📦",col:C.em}];
 const RO={device:["iPhone / iOS","Android","Desktop / PC","Tablet"],day:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday","Weekdays","Weekends"],weather:["Sunny / Clear","Rainy","Snowing","Hot (85°F+)","Cold (50°F-)"],language:["English","Spanish","French","Mandarin","Arabic","Portuguese","German","Japanese"],location:["United States","United Kingdom","Canada","Europe (EU)","Latin America","Asia Pacific"],scan_count:["First scan ever","First 50 scans","First 100 scans","Every 10th scan","After 500 scans"],loyalty:["New visitor","Returning visitor","Loyalty member","VIP / Premium","Inactive (60+ days)"],event:["Before event","Day of event","During event","After event","Event cancelled"],inventory:["In stock","Low stock (< 10)","Out of stock","Back in stock","Discontinued"]};
 const gid=()=>Math.random().toString(36).slice(2,9);
@@ -1093,54 +805,34 @@ const mkD=()=>({id:gid(),label:"",url:"",rules:[mkR()]});
 const PILOTS={restaurant:[{label:"Lunch",url:"",rules:[{...mkR("time"),tf:"11:00",tt:"14:30"}]},{label:"Dinner",url:"",rules:[{...mkR("time"),tf:"17:00",tt:"22:00"}]},{label:"Brunch",url:"",rules:[{...mkR("day"),cond:"Weekends"}]}],app:[{label:"iOS",url:"",rules:[{...mkR("device"),cond:"iPhone / iOS"}]},{label:"Android",url:"",rules:[{...mkR("device"),cond:"Android"}]},{label:"Desktop",url:"",rules:[{...mkR("device"),cond:"Desktop / PC"}]}],event:[{label:"Tickets",url:"",rules:[{...mkR("event"),cond:"Before event"}]},{label:"Day-Of",url:"",rules:[{...mkR("event"),cond:"Day of event"}]},{label:"Live",url:"",rules:[{...mkR("event"),cond:"During event"}]},{label:"Recap",url:"",rules:[{...mkR("event"),cond:"After event"}]}]};
 
 function QRModal({ init, onSave, onClose, programs=[] }) {
-  const [name,setName]=useState(init?.name||""); const [wurl,setWurl]=useState(init?.workerUrl||"");
-  const [dests,setDests]=useState(init?.destinations||[mkD()]); const [fb,setFb]=useState(init?.fallback||"");
-  const [fg,setFg]=useState(init?.fg||C.t1); const [tab,setTab]=useState("build"); const [png,setPng]=useState(null);
+  const [name,setName]=useState(init?.name||"");
+  const [dests,setDests]=useState(init?.destinations||[mkD()]);
+  const [fb,setFb]=useState(init?.fallback||"");
+  const [fg,setFg]=useState(init?.fg||C.t1);
+  const [tab,setTab]=useState("build");
+  const [png,setPng]=useState(null);
   const [saving,setSaving]=useState(false);
   const [linkedProgram,setLinkedProgram]=useState(init?.linkedProgram||"");
+  const w=useW(); const mob=w<640;
+  const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
+  const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
+  const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
 
   const handleSave = async () => {
     if (!name) return;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
     const autoUrl = `https://${slug}.qr.xhibitur.com`;
     const autoFallback = fb || `https://rewards.xhibitur.com/#/checkin/${slug}`;
-
-    // Get linked program settings
     const prog = programs.find(p=>p.id===linkedProgram);
-    const rewardSettings = prog ? {
-      goal: prog.cfg?.stampsRequired || 10,
-      reward: prog.cfg?.reward || "Free item",
-      programName: prog.name,
-    } : { goal: 10, reward: "Free item", programName: "" };
-
+    const rewardSettings = prog ? { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name } : { goal:10, reward:"Free item", programName:"" };
     setSaving(true);
     try {
-      const res = await fetch("/.netlify/functions/save-qr-rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug,
-          name,
-          destinations: dests,
-          fallback: autoFallback,
-          rewardGoal: rewardSettings.goal,
-          rewardName: rewardSettings.reward,
-          programName: rewardSettings.programName,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) console.error("KV save error:", data.error);
-    } catch(e) {
-      console.error("KV save failed:", e);
-    }
+      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName }) });
+    } catch(e) { console.error("KV save failed:", e); }
     setSaving(false);
-    onSave({ id: init?.id || gid(), name, workerUrl: autoUrl, destinations: dests, fallback: autoFallback, fg, linkedProgram });
+    onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:autoFallback, fg, linkedProgram });
   };
-  const w=useW(); const mob=w<640;
-  const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
-  const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
-  const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
-  const wc=`// Xhibitur Rewards — Cloudflare Worker\nconst C=${JSON.stringify({name,destinations:dests.map(d=>({label:d.label,destination:d.url,rules:d.rules.map(r=>({type:r.type,condition:r.type==="time"?`${r.tf}-${r.tt}`:r.cond}))})),fallback:fb},null,2)};\nexport default{async fetch(q){const ua=q.headers.get("User-Agent")||"";const now=new Date();const t=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");const D=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];const day=D[now.getDay()];const iOS=/iPhone|iPad/.test(ua),droid=/Android/.test(ua);for(const d of C.destinations){if(d.rules.every(r=>{if(r.type==="device"){if(r.condition==="iPhone / iOS")return iOS;if(r.condition==="Android")return droid;if(r.condition==="Desktop / PC")return!iOS&&!droid;return true;}if(r.type==="time"){const[a,b]=r.condition.split("-");return t>=a&&t<=b;}if(r.type==="day"){if(r.condition==="Weekends")return["Saturday","Sunday"].includes(day);if(r.condition==="Weekdays")return!["Saturday","Sunday"].includes(day);return day===r.condition;}return true;})&&d.destination)return Response.redirect(d.destination,302);}return C.fallback?Response.redirect(C.fallback,302):new Response("No match",{status:200});}};`;
+
   return (
     <div style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.85)",backdropFilter:"blur(8px)",display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20 }}>
       <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:mob?"20px 20px 0 0":18,width:"100%",maxWidth:mob?undefined:680,maxHeight:mob?"92vh":"90vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 32px 80px rgba(0,0,0,.8)",animation:mob?"sheetUp .3s ease":"fadeUp .2s ease" }}>
@@ -1156,41 +848,19 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
             <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
               <div>
                 <label style={lbl}>Campaign name</label>
-                <input value={name} onChange={e=>{
-                  setName(e.target.value);
-                  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
-                  if (slug && !fb) setFb(`https://rewards.xhibitur.com/#/checkin/${slug}`);
-                }} placeholder="e.g. Harlem Cafe Loyalty" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={name} onChange={e=>{ setName(e.target.value); const slug=e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50); if(slug&&!fb) setFb(`https://rewards.xhibitur.com/#/checkin/${slug}`); }} placeholder="e.g. Harlem Cafe Loyalty" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
                 {name && <div style={{ fontSize:11,color:C.t4,marginTop:6 }}>Your QR URL will be: <span style={{ color:C.vi,fontFamily:"DM Mono,monospace" }}>https://{name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com</span></div>}
               </div>
               <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px" }}>
                 <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
                 <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
               </div>
-
-              {/* Link to rewards program */}
               <div>
                 <label style={lbl}>Link to rewards program</label>
-                <select value={linkedProgram} onChange={e=>setLinkedProgram(e.target.value)}
-                  style={{ ...si,width:"100%",color:linkedProgram?C.t1:C.t4 }}>
+                <select value={linkedProgram} onChange={e=>setLinkedProgram(e.target.value)} style={{ ...si,width:"100%",color:linkedProgram?C.t1:C.t4 }}>
                   <option value="">— No program linked (default: 10 stamps, Free item) —</option>
-                  {programs.filter(p=>p.type==="stamps").map(p=>(
-                    <option key={p.id} value={p.id}>{p.name} — {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}</option>
-                  ))}
+                  {programs.filter(p=>p.type==="stamps").map(p=>(<option key={p.id} value={p.id}>{p.name} — {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}</option>))}
                 </select>
-                {linkedProgram && (()=>{
-                  const p = programs.find(x=>x.id===linkedProgram);
-                  return p ? (
-                    <div style={{ fontSize:11,color:C.vi,marginTop:6 }}>
-                      ✓ Check-in page will show: {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}
-                    </div>
-                  ) : null;
-                })()}
-                {programs.filter(p=>p.type==="stamps").length===0 && (
-                  <div style={{ fontSize:11,color:C.t4,marginTop:6 }}>
-                    Create a Stamp Card program in the Rewards tab first to link it here.
-                  </div>
-                )}
               </div>
               <div>
                 <label style={lbl}>Quick-start templates</label>
@@ -1208,11 +878,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                       {dests.length>1 && <button onClick={()=>rem(d.id)} style={{ background:"none",border:"none",color:C.t4,fontSize:22,cursor:"pointer",minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center" }}>×</button>}
                     </div>
                     <div style={{ padding:14,background:C.bg2,display:"flex",flexDirection:"column",gap:10 }}>
-                      <input value={d.url} onChange={e=>upd(d.id,{...d,url:e.target.value})}
-                        onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) upd(d.id,{...d,url:"https://"+v}); }}
-                        placeholder="https://destination-url.com" style={si}
-                        onFocus={e=>e.target.style.borderColor=C.vi}
-                        onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) upd(d.id,{...d,url:"https://"+v}); e.target.style.borderColor=C.b2; }}/>
+                      <input value={d.url} onChange={e=>upd(d.id,{...d,url:e.target.value})} onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) upd(d.id,{...d,url:"https://"+v}); e.target.style.borderColor=C.b2; }} placeholder="https://destination-url.com" style={si} onFocus={e=>e.target.style.borderColor=C.vi}/>
                       {d.rules.map(r=>{
                         const rt=RT.find(x=>x.id===r.type);
                         return (
@@ -1240,10 +906,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
               </div>
               <div style={{ background:C.am+"0c",border:`1px solid ${C.am}22`,borderRadius:10,padding:14 }}>
                 <label style={{ ...lbl,color:C.am }}>Fallback URL — when no rules match</label>
-                <input value={fb} onChange={e=>setFb(e.target.value)}
-                  onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) setFb("https://"+v); }}
-                  placeholder="https://yoursite.com" style={si}
-                  onFocus={e=>e.target.style.borderColor=C.am}/>
+                <input value={fb} onChange={e=>setFb(e.target.value)} onBlur={e=>{ let v=e.target.value.trim(); if(v&&!v.startsWith("http")) setFb("https://"+v); }} placeholder="https://yoursite.com" style={si} onFocus={e=>e.target.style.borderColor=C.am}/>
                 <div style={{ fontSize:11,color:C.t4,marginTop:5 }}>If no rules match, customers go here. Leave blank to use your check-in page.</div>
               </div>
               <div>
@@ -1260,10 +923,10 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
               <div style={{ background:C.bg3,borderRadius:16,padding:"28px 24px",marginBottom:16,border:`1px solid ${C.b2}` }}>
                 <div style={{ color:C.t4,fontSize:10,fontWeight:600,letterSpacing:".1em",marginBottom:12 }}>{(name||"SMART QR CODE").toUpperCase()}</div>
                 <div style={{ display:"inline-block",background:C.bg3,padding:14,borderRadius:14,border:`1px solid ${C.b2}`,boxShadow:`0 0 40px ${C.viGlo}` }}>
-                  <QRBox value={name ? `https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com` : "https://xhibitur.com"} fg={fg} bg={C.bg3} size={180} onUrl={setPng}/>
+                  <QRBox value={name?`https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com`:"https://xhibitur.com"} fg={fg} bg={C.bg3} size={180} onUrl={setPng}/>
                 </div>
                 <div style={{ color:C.t4,fontSize:11,marginTop:12,wordBreak:"break-all" }}>
-                  {name ? `https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com` : "Enter a campaign name to generate URL"}
+                  {name?`https://${name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)}.qr.xhibitur.com`:"Enter a campaign name to generate URL"}
                 </div>
                 {png && <a href={png} download={`${name||"qr"}.png`} style={{ display:"inline-flex",alignItems:"center",gap:6,marginTop:14,...btnP(),textDecoration:"none",fontSize:13 }}>↓ Download QR PNG</a>}
               </div>
@@ -1282,149 +945,21 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
         </div>
         <div style={{ padding:"14px 18px",borderTop:`1px solid ${C.b1}`,display:"flex",gap:10,background:C.bg3,flexShrink:0 }}>
           <button onClick={onClose} style={{ ...btnG(mob),flex:mob?1:0,padding:"10px 18px",fontSize:14 }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14,opacity:saving?.7:1 }}>
-            {saving?"Saving…":init?"Save changes":"Create QR code"}
-          </button>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnP(C.vi,mob),flex:mob?1:0,padding:"10px 20px",fontSize:14,opacity:saving?.7:1 }}>{saving?"Saving…":init?"Save changes":"Create QR code"}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Printable Sign Generator ──────────────────────────────────────────────────
 function generatePrintableSign(qr, qrDataUrl, bizName) {
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Loyalty Sign — ${bizName || qr.name}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 24px;
-    }
-    .sign {
-      background: #000;
-      border-radius: 24px;
-      padding: 48px 40px;
-      width: 360px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,.3);
-    }
-    .star-row {
-      color: #D4A017;
-      font-size: 22px;
-      font-weight: 900;
-      letter-spacing: .05em;
-      margin-bottom: 20px;
-    }
-    .headline {
-      font-size: 28px;
-      font-weight: 900;
-      color: #fff;
-      letter-spacing: -.02em;
-      line-height: 1.15;
-      margin-bottom: 6px;
-    }
-    .headline span { color: #D4A017; }
-    .subline {
-      font-size: 16px;
-      font-weight: 600;
-      color: #a3a3a3;
-      margin-bottom: 28px;
-      line-height: 1.5;
-    }
-    .qr-wrap {
-      background: #fff;
-      border-radius: 16px;
-      padding: 16px;
-      display: inline-block;
-      margin-bottom: 28px;
-      box-shadow: 0 0 0 4px #D4A017;
-    }
-    .qr-wrap img { display: block; width: 200px; height: 200px; }
-    .badge {
-      background: #D4A017;
-      color: #000;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .08em;
-      padding: 6px 16px;
-      border-radius: 99px;
-      display: inline-block;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-    }
-    .footer {
-      font-size: 11px;
-      color: #525252;
-      line-height: 1.6;
-    }
-    .footer strong { color: #D4A017; }
-    .divider {
-      border: none;
-      border-top: 1px solid #1a1a1a;
-      margin: 20px 0;
-    }
-    .print-note {
-      display: block;
-      margin-top: 32px;
-      font-size: 12px;
-      color: #888;
-      text-align: center;
-      font-family: 'Inter', sans-serif;
-    }
-    @media print {
-      body { background: white; padding: 0; }
-      .sign { box-shadow: none; border: 2px solid #D4A017; }
-      .print-note { display: none; }
-    }
-  </style>
-</head>
-<body>
-  <div>
-    <div class="sign">
-      <div class="star-row">⭐ SCAN TO JOIN ⭐</div>
-      <div class="headline">Our <span>FREE</span> loyalty<br/>rewards program</div>
-      <div class="subline">Earn rewards every time you visit.<br/>No app needed.</div>
-      <div class="qr-wrap">
-        <img src="${qrDataUrl}" alt="QR Code"/>
-      </div>
-      <br/>
-      <div class="badge">Scan with your phone camera</div>
-      <hr class="divider"/>
-      <div class="footer">
-        <strong>Powered by Xhibitur Rewards</strong><br/>
-        rewards.xhibitur.com
-      </div>
-    </div>
-    <span class="print-note">
-      Print this page and display it at your counter, door, or table.<br/>
-      Use Ctrl+P (Windows) or Cmd+P (Mac) to print.
-    </span>
-  </div>
-</body>
-</html>`;
-
-  const blob = new Blob([html], { type: "text/html" });
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>Loyalty Sign</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f5f5f5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.sign{background:#000;border-radius:24px;padding:48px 40px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}.star-row{color:#D4A017;font-size:22px;font-weight:900;margin-bottom:20px}.headline{font-size:28px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:6px}.headline span{color:#D4A017}.subline{font-size:16px;font-weight:600;color:#a3a3a3;margin-bottom:28px;line-height:1.5}.qr-wrap{background:#fff;border-radius:16px;padding:16px;display:inline-block;margin-bottom:28px;box-shadow:0 0 0 4px #D4A017}.qr-wrap img{display:block;width:200px;height:200px}.badge{background:#D4A017;color:#000;font-size:11px;font-weight:800;padding:6px 16px;border-radius:99px;display:inline-block;margin-bottom:20px;text-transform:uppercase}.footer{font-size:11px;color:#525252;line-height:1.6}.footer strong{color:#D4A017}.divider{border:none;border-top:1px solid #1a1a1a;margin:20px 0}.print-note{display:block;margin-top:32px;font-size:12px;color:#888;text-align:center}@media print{body{background:white;padding:0}.sign{box-shadow:none;border:2px solid #D4A017}.print-note{display:none}}</style></head><body><div><div class="sign"><div class="star-row">⭐ SCAN TO JOIN ⭐</div><div class="headline">Our <span>FREE</span> loyalty<br/>rewards program</div><div class="subline">Earn rewards every time you visit.<br/>No app needed.</div><div class="qr-wrap"><img src="${qrDataUrl}" alt="QR Code"/></div><br/><div class="badge">Scan with your phone camera</div><hr class="divider"/><div class="footer"><strong>Powered by Xhibitur Rewards</strong><br/>rewards.xhibitur.com</div></div><span class="print-note">Print this page and display it at your counter, door, or table.<br/>Use Ctrl+P (Windows) or Cmd+P (Mac) to print.</span></div></body></html>`;
+  const blob = new Blob([html], { type:"text/html" });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank");
-  if (win) {
-    win.onload = () => {
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    };
-  }
+  if (win) { win.onload = () => { setTimeout(()=>URL.revokeObjectURL(url),5000); }; }
 }
 
-// ── QR Card — must be defined outside QRPage ──────────────────────────────────
 function QRCard({ qr, onEdit, onDelete, mob }) {
   const [du,setDu]=useState(null);
   return (
@@ -1460,17 +995,18 @@ function QRCard({ qr, onEdit, onDelete, mob }) {
   );
 }
 
-// ── Shared Programs Store ─────────────────────────────────────────────────────
 const ProgramsCtx = createContext([]);
 const usePrograms = () => useContext(ProgramsCtx);
 
 function QRPage() {
-  const { nav } = useNav(); const w=useW(); const mob=w<640;
   const { user } = useAuth();
+  const { nav } = useNav();
+  const w=useW(); const mob=w<640;
   const programs = usePrograms();
-  const [codes,setCodes]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
+  const [codes,setCodes] = useState([]);
+  const [loading,setLoading] = useState(true);
+  const [modal,setModal] = useState(false);
+  const [ed,setEd] = useState(null);
 
   useEffect(()=>{
     if (!user?.email) return;
@@ -1478,29 +1014,27 @@ function QRPage() {
       .then(r=>r.json()).then(d=>{ if(d.codes) setCodes(d.codes); }).finally(()=>setLoading(false));
   },[user?.email]);
 
-  const save=async qr=>{
+  const save = async qr => {
     const updated = ed ? codes.map(x=>x.id===qr.id?qr:x) : [...codes,qr];
     setCodes(updated); setModal(false); setEd(null);
     await fetch("/.netlify/functions/qr-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"save", userEmail:user.email, qr }) });
   };
-  const remove=async id=>{
+
+  const remove = async id => {
     setCodes(codes.filter(x=>x.id!==id));
     await fetch("/.netlify/functions/qr-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"delete", userEmail:user.email, qrId:id }) });
   };
-  const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
-  const save=qr=>{ if(ed)setCodes(codes.map(x=>x.id===qr.id?qr:x));else setCodes([...codes,qr]); setModal(false);setEd(null); };
+
   return (
     <DashShell>
       <PgHead title="Smart QR Codes" sub="Route every scan to the right destination."
         action={<button onClick={()=>setModal(true)} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New QR</button>}/>
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-        {codes.length===0
-          ?<Empty icon="▦" title="No Smart QR codes yet" body="Create your first dynamic QR code." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first QR</button>}/>
-          :codes.map(qr=>(
-            <QRCard key={qr.id} qr={qr} mob={mob}
-              onEdit={q=>{setEd(q);setModal(true);}}
-              onDelete={remove}/>
-          ))
+        {loading
+          ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div>
+          : codes.length===0
+            ? <Empty icon="▦" title="No Smart QR codes yet" body="Create your first dynamic QR code." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first QR</button>}/>
+            : codes.map(qr=>(<QRCard key={qr.id} qr={qr} mob={mob} onEdit={q=>{setEd(q);setModal(true);}} onDelete={remove}/>))
         }
       </div>
       {modal && <QRModal init={ed} onSave={save} programs={programs} onClose={()=>{setModal(false);setEd(null);}}/>}
@@ -1508,62 +1042,37 @@ function QRPage() {
   );
 }
 
-// ── Rewards Page ──────────────────────────────────────────────────────────────
 const RWD = [
-  { id:"stamps",   icon:"🎯", lb:"Stamp Card",     desc:"Scan to earn stamps. Redeem at goal." },
-  { id:"tiers",    icon:"👑", lb:"Loyalty Tiers",  desc:"Bronze, Silver, Gold — stamp milestones." },
-  { id:"referral", icon:"🤝", lb:"Referral",        desc:"Share a link. Friend joins. Both earn." },
+  { id:"stamps",   icon:"🎯", lb:"Stamp Card",    desc:"Scan to earn stamps. Redeem at goal." },
+  { id:"tiers",    icon:"👑", lb:"Loyalty Tiers", desc:"Bronze, Silver, Gold — stamp milestones." },
+  { id:"referral", icon:"🤝", lb:"Referral",       desc:"Share a link. Friend joins. Both earn." },
 ];
 const RPAL=[C.am,C.vi,C.cy];
-const DEMO_P=[
-  { id:"1",name:"Coffee Loyalty",type:"stamps",active:true,members:312,redemptions:47,scans:1284,cfg:{ stampsRequired:10,reward:"Free coffee",winbackDays:60,winbackOffer:"We miss you — come back for a free drink",referrals:false },col:C.am },
-];
 
 function RwdModal({ init,onSave,onClose }) {
-  const [name,setName]   = useState(init?.name||"");
-  const [type,setType]   = useState(init?.type||"stamps");
+  const [name,setName]=useState(init?.name||"");
+  const [type,setType]=useState(init?.type||"stamps");
   const w=useW(); const mob=w<640;
   const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
-
-  // Stamp Card state
-  const [sr,setSr]   = useState(init?.cfg?.stampsRequired||10);
-  const [rw,setRw]   = useState(init?.cfg?.reward||"Free item");
-  const [wbd,setWbd] = useState(init?.cfg?.winbackDays||60);
-  const [wbo,setWbo] = useState(init?.cfg?.winbackOffer||"We miss you — come back for a free visit");
-
-  // Tiers state
-  const [t1stamps,setT1stamps] = useState(init?.cfg?.tiers?.[0]?.stamps||5);
-  const [t1reward,setT1reward] = useState(init?.cfg?.tiers?.[0]?.reward||"Free drink upgrade");
-  const [t2stamps,setT2stamps] = useState(init?.cfg?.tiers?.[1]?.stamps||15);
-  const [t2reward,setT2reward] = useState(init?.cfg?.tiers?.[1]?.reward||"20% off any purchase");
-  const [t3stamps,setT3stamps] = useState(init?.cfg?.tiers?.[2]?.stamps||30);
-  const [t3reward,setT3reward] = useState(init?.cfg?.tiers?.[2]?.reward||"Free meal or service");
-
-  // Referral state
-  const [refReward,setRefReward] = useState(init?.cfg?.refReward||"1 bonus stamp");
-  const [refFriendReward,setRefFriendReward] = useState(init?.cfg?.refFriendReward||"1 bonus stamp");
+  const [sr,setSr]=useState(init?.cfg?.stampsRequired||10);
+  const [rw,setRw]=useState(init?.cfg?.reward||"Free item");
+  const [wbd,setWbd]=useState(init?.cfg?.winbackDays||60);
+  const [wbo,setWbo]=useState(init?.cfg?.winbackOffer||"We miss you — come back for a free visit");
+  const [t1stamps,setT1stamps]=useState(init?.cfg?.tiers?.[0]?.stamps||5);
+  const [t1reward,setT1reward]=useState(init?.cfg?.tiers?.[0]?.reward||"Free drink upgrade");
+  const [t2stamps,setT2stamps]=useState(init?.cfg?.tiers?.[1]?.stamps||15);
+  const [t2reward,setT2reward]=useState(init?.cfg?.tiers?.[1]?.reward||"20% off any purchase");
+  const [t3stamps,setT3stamps]=useState(init?.cfg?.tiers?.[2]?.stamps||30);
+  const [t3reward,setT3reward]=useState(init?.cfg?.tiers?.[2]?.reward||"Free meal or service");
+  const [refReward,setRefReward]=useState(init?.cfg?.refReward||"1 bonus stamp");
+  const [refFriendReward,setRefFriendReward]=useState(init?.cfg?.refFriendReward||"1 bonus stamp");
 
   const save = () => {
     let cfg = {};
-    if (type==="stamps") {
-      cfg = { stampsRequired:sr, reward:rw, winbackDays:wbd, winbackOffer:wbo };
-    } else if (type==="tiers") {
-      cfg = {
-        tiers:[
-          { level:"Bronze", stamps:t1stamps, reward:t1reward, color:C.am },
-          { level:"Silver", stamps:t2stamps, reward:t2reward, color:C.t3 },
-          { level:"Gold",   stamps:t3stamps, reward:t3reward, color:C.vi },
-        ],
-        winbackDays:wbd, winbackOffer:wbo,
-      };
-    } else if (type==="referral") {
-      cfg = { refReward, refFriendReward, winbackDays:wbd, winbackOffer:wbo };
-    }
-    onSave({
-      id:init?.id||gid(), name, type, active:true,
-      members:init?.members||0, redemptions:init?.redemptions||0, scans:init?.scans||0,
-      cfg, col:RPAL[RWD.findIndex(x=>x.id===type)%3]||C.vi,
-    });
+    if (type==="stamps") { cfg = { stampsRequired:sr, reward:rw, winbackDays:wbd, winbackOffer:wbo }; }
+    else if (type==="tiers") { cfg = { tiers:[{ level:"Bronze",stamps:t1stamps,reward:t1reward,color:C.am },{ level:"Silver",stamps:t2stamps,reward:t2reward,color:C.t3 },{ level:"Gold",stamps:t3stamps,reward:t3reward,color:C.vi }], winbackDays:wbd, winbackOffer:wbo }; }
+    else if (type==="referral") { cfg = { refReward, refFriendReward, winbackDays:wbd, winbackOffer:wbo }; }
+    onSave({ id:init?.id||gid(), name, type, active:true, members:init?.members||0, redemptions:init?.redemptions||0, scans:init?.scans||0, cfg, col:RPAL[RWD.findIndex(x=>x.id===type)%3]||C.vi });
   };
 
   return (
@@ -1574,105 +1083,50 @@ function RwdModal({ init,onSave,onClose }) {
           <button onClick={onClose} style={{ background:C.bg4,border:`1px solid ${C.b3}`,color:C.t4,width:36,height:36,borderRadius:"50%",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>×</button>
         </div>
         <div style={{ flex:1,overflowY:"auto",padding:mob?16:20,display:"flex",flexDirection:"column",gap:16,WebkitOverflowScrolling:"touch" }}>
-
-          {/* Program name */}
-          <div>
-            <label style={lbl}>Program name</label>
-            <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Coffee Loyalty Club" style={si}
-              onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-          </div>
-
-          {/* Program type */}
+          <div><label style={lbl}>Program name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Coffee Loyalty Club" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
           <div>
             <label style={lbl}>Program type</label>
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
-              {RWD.map(rt=>(
-                <button key={rt.id} onClick={()=>setType(rt.id)} style={{ padding:"12px 8px",borderRadius:10,cursor:"pointer",border:`2px solid ${type===rt.id?C.vi:C.b2}`,background:type===rt.id?C.viDim:C.bg3,textAlign:"center",transition:"all .12s" }}>
-                  <div style={{ fontSize:22,marginBottom:4 }}>{rt.icon}</div>
-                  <div style={{ fontSize:12,fontWeight:700,color:type===rt.id?C.vi:C.t1 }}>{rt.lb}</div>
-                </button>
-              ))}
+              {RWD.map(rt=>(<button key={rt.id} onClick={()=>setType(rt.id)} style={{ padding:"12px 8px",borderRadius:10,cursor:"pointer",border:`2px solid ${type===rt.id?C.vi:C.b2}`,background:type===rt.id?C.viDim:C.bg3,textAlign:"center",transition:"all .12s" }}><div style={{ fontSize:22,marginBottom:4 }}>{rt.icon}</div><div style={{ fontSize:12,fontWeight:700,color:type===rt.id?C.vi:C.t1 }}>{rt.lb}</div></button>))}
             </div>
           </div>
-
-          {/* ── Stamp Card ── */}
           {type==="stamps" && (
             <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}>
               <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>STAMP CARD SETTINGS</div>
-              <div>
-                <label style={lbl}>Stamps required for reward</label>
-                <input type="number" value={sr} onChange={e=>setSr(+e.target.value)} min={1} max={50} style={si}/>
-              </div>
-              <div>
-                <label style={lbl}>Reward earned</label>
-                <input value={rw} onChange={e=>setRw(e.target.value)} placeholder="Free coffee" style={si}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
+              <div><label style={lbl}>Stamps required for reward</label><input type="number" value={sr} onChange={e=>setSr(+e.target.value)} min={1} max={50} style={si}/></div>
+              <div><label style={lbl}>Reward earned</label><input value={rw} onChange={e=>setRw(e.target.value)} placeholder="Free coffee" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
             </div>
           )}
-
-          {/* ── Loyalty Tiers ── */}
           {type==="tiers" && (
             <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-              <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>TIER MILESTONES — stamps accumulate forever</div>
-              {[
-                { lb:"🥉 Bronze", stamps:t1stamps, setStamps:setT1stamps, reward:t1reward, setReward:setT1reward, color:C.am },
-                { lb:"🥈 Silver", stamps:t2stamps, setStamps:setT2stamps, reward:t2reward, setReward:setT2reward, color:C.t3 },
-                { lb:"🥇 Gold",   stamps:t3stamps, setStamps:setT3stamps, reward:t3reward, setReward:setT3reward, color:C.vi },
-              ].map(t=>(
+              <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>TIER MILESTONES</div>
+              {[{ lb:"🥉 Bronze",stamps:t1stamps,setStamps:setT1stamps,reward:t1reward,setReward:setT1reward,color:C.am },{ lb:"🥈 Silver",stamps:t2stamps,setStamps:setT2stamps,reward:t2reward,setReward:setT2reward,color:C.t3 },{ lb:"🥇 Gold",stamps:t3stamps,setStamps:setT3stamps,reward:t3reward,setReward:setT3reward,color:C.vi }].map(t=>(
                 <div key={t.lb} style={{ background:C.bg3,borderRadius:10,padding:12,borderLeft:`3px solid ${t.color}` }}>
                   <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:10 }}>{t.lb}</div>
                   <div style={{ display:"grid",gridTemplateColumns:"80px 1fr",gap:8 }}>
-                    <div>
-                      <label style={lbl}>Stamps</label>
-                      <input type="number" value={t.stamps} onChange={e=>t.setStamps(+e.target.value)} min={1} style={si}/>
-                    </div>
-                    <div>
-                      <label style={lbl}>Reward</label>
-                      <input value={t.reward} onChange={e=>t.setReward(e.target.value)} placeholder="Reward at this tier" style={si}
-                        onFocus={e=>e.target.style.borderColor=t.color} onBlur={e=>e.target.style.borderColor=C.b2}/>
-                    </div>
+                    <div><label style={lbl}>Stamps</label><input type="number" value={t.stamps} onChange={e=>t.setStamps(+e.target.value)} min={1} style={si}/></div>
+                    <div><label style={lbl}>Reward</label><input value={t.reward} onChange={e=>t.setReward(e.target.value)} placeholder="Reward at this tier" style={si} onFocus={e=>e.target.style.borderColor=t.color} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
                   </div>
                 </div>
               ))}
-              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.t4 }}>
-                💡 Stamps accumulate across all visits — customers never reset. Each milestone reward fires once when reached.
-              </div>
             </div>
           )}
-
-          {/* ── Referral ── */}
           {type==="referral" && (
             <div style={{ background:C.bg3,borderRadius:10,padding:14,display:"flex",flexDirection:"column",gap:12 }}>
               <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:4 }}>REFERRAL SETTINGS</div>
-              <div>
-                <label style={lbl}>Reward for the person who refers</label>
-                <input value={refReward} onChange={e=>setRefReward(e.target.value)} placeholder="1 bonus stamp" style={si}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
-              <div>
-                <label style={lbl}>Reward for the new friend who joins</label>
-                <input value={refFriendReward} onChange={e=>setRefFriendReward(e.target.value)} placeholder="1 bonus stamp" style={si}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
-              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.t4 }}>
-                💡 After checking in, customers get a unique referral link to share. When their friend checks in for the first time, both earn their reward automatically.
-              </div>
+              <div><label style={lbl}>Reward for the person who refers</label><input value={refReward} onChange={e=>setRefReward(e.target.value)} placeholder="1 bonus stamp" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+              <div><label style={lbl}>Reward for the new friend who joins</label><input value={refFriendReward} onChange={e=>setRefFriendReward(e.target.value)} placeholder="1 bonus stamp" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
             </div>
           )}
-
-          {/* Win-back rule — shown for all types */}
           <div style={{ background:C.am+"0c",border:`1px solid ${C.am}22`,borderRadius:10,padding:14 }}>
-            <label style={{ ...lbl,color:C.am }}>⚡ Win-back rule (all program types)</label>
+            <label style={{ ...lbl,color:C.am }}>⚡ Win-back rule</label>
             <div style={{ display:"flex",gap:10,marginBottom:10,alignItems:"center",flexWrap:"wrap" }}>
               <span style={{ fontSize:13,color:C.t4 }}>If inactive for</span>
               <input type="number" value={wbd} onChange={e=>setWbd(+e.target.value)} min={7} style={{...si,width:70}}/>
               <span style={{ fontSize:13,color:C.t4 }}>days, send offer:</span>
             </div>
-            <input value={wbo} onChange={e=>setWbo(e.target.value)} placeholder="We miss you — 20% off your next visit" style={si}
-              onFocus={e=>e.target.style.borderColor=C.am} onBlur={e=>e.target.style.borderColor=C.b2}/>
+            <input value={wbo} onChange={e=>setWbo(e.target.value)} placeholder="We miss you — 20% off your next visit" style={si} onFocus={e=>e.target.style.borderColor=C.am} onBlur={e=>e.target.style.borderColor=C.b2}/>
           </div>
-
         </div>
         <div style={{ padding:"14px 18px",borderTop:`1px solid ${C.b1}`,display:"flex",gap:10,background:C.bg3,flexShrink:0 }}>
           <button onClick={onClose} style={{ ...btnG(mob),flex:mob?1:0,fontSize:14,padding:"10px 18px" }}>Cancel</button>
@@ -1683,12 +1137,14 @@ function RwdModal({ init,onSave,onClose }) {
   );
 }
 
-function RewardsPage({ programs, setPrograms }) {
+function RewardsPage() {
   const { user } = useAuth();
-  const { nav } = useNav(); const w=useW(); const mob=w<640;
-  const [progs, setProgs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal,setModal]=useState(false); const [ed,setEd]=useState(null);
+  const { nav } = useNav();
+  const w=useW(); const mob=w<640;
+  const [progs,setProgs] = useState([]);
+  const [loading,setLoading] = useState(true);
+  const [modal,setModal] = useState(false);
+  const [ed,setEd] = useState(null);
 
   useEffect(()=>{
     if (!user?.email) return;
@@ -1696,12 +1152,13 @@ function RewardsPage({ programs, setPrograms }) {
       .then(r=>r.json()).then(d=>{ if(d.programs) setProgs(d.programs); }).finally(()=>setLoading(false));
   },[user?.email]);
 
-  const save=async p=>{
+  const save = async p => {
     const updated = ed ? progs.map(x=>x.id===p.id?p:x) : [...progs,p];
     setProgs(updated); setModal(false); setEd(null);
     await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"save", userEmail:user.email, program:p }) });
   };
-  const remove=async id=>{
+
+  const remove = async id => {
     setProgs(progs.filter(x=>x.id!==id));
     await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"delete", userEmail:user.email, programId:id }) });
   };
@@ -1712,7 +1169,6 @@ function RewardsPage({ programs, setPrograms }) {
     if (p.type==="referral") return `Referrer gets: ${p.cfg?.refReward}`;
     return "";
   };
-
   const typeIcon = { stamps:"🎯", tiers:"👑", referral:"🤝" };
 
   return (
@@ -1720,324 +1176,62 @@ function RewardsPage({ programs, setPrograms }) {
       <PgHead title="Rewards Programs" sub="Build loyalty and bring customers back."
         action={<button onClick={()=>setModal(true)} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New Program</button>}/>
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-        {progs.length===0
-          ?<Empty icon="◆" title="No rewards programs yet" body="Create your first loyalty program." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first program</button>}/>
-          :progs.map(p=>(
-            <div key={p.id} style={{ ...card(),padding:mob?14:18 }}>
-              <div style={{ display:"flex",alignItems:"flex-start",gap:12,marginBottom:14 }}>
-                <div style={{ width:44,height:44,borderRadius:10,background:p.col+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${p.col}22` }}>{typeIcon[p.type]||"◆"}</div>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap" }}>
-                    <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>{p.name}</span>
-                    <Tag color={p.active?C.ok:C.t4} dot>{p.active?"Active":"Paused"}</Tag>
-                    <Tag color={p.col}>{RWD.find(x=>x.id===p.type)?.lb||p.type}</Tag>
-                  </div>
-                  <div style={{ fontSize:13,color:C.t4 }}>{typeLabel(p)}</div>
-
-                  {/* Tier milestones preview */}
-                  {p.type==="tiers" && p.cfg?.tiers && (
-                    <div style={{ display:"flex",gap:6,marginTop:8,flexWrap:"wrap" }}>
-                      {p.cfg.tiers.map(t=>(
-                        <div key={t.level} style={{ background:C.bg3,border:`1px solid ${t.color||C.b2}`,borderRadius:8,padding:"4px 10px",fontSize:11 }}>
-                          <span style={{ color:t.color||C.vi,fontWeight:700 }}>{t.level}</span>
-                          <span style={{ color:C.t4 }}> · {t.stamps} stamps · {t.reward}</span>
-                        </div>
-                      ))}
+        {loading
+          ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div>
+          : progs.length===0
+            ? <Empty icon="◆" title="No rewards programs yet" body="Create your first loyalty program." cta={<button onClick={()=>setModal(true)} style={{ ...btnP(),padding:"12px 24px" }}>Create first program</button>}/>
+            : progs.map(p=>(
+              <div key={p.id} style={{ ...card(),padding:mob?14:18 }}>
+                <div style={{ display:"flex",alignItems:"flex-start",gap:12,marginBottom:14 }}>
+                  <div style={{ width:44,height:44,borderRadius:10,background:p.col+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${p.col}22` }}>{typeIcon[p.type]||"◆"}</div>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap" }}>
+                      <span style={{ fontWeight:700,fontSize:15,color:C.t1 }}>{p.name}</span>
+                      <Tag color={p.active?C.ok:C.t4} dot>{p.active?"Active":"Paused"}</Tag>
+                      <Tag color={p.col}>{RWD.find(x=>x.id===p.type)?.lb||p.type}</Tag>
                     </div>
-                  )}
+                    <div style={{ fontSize:13,color:C.t4 }}>{typeLabel(p)}</div>
+                  </div>
+                </div>
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:14,background:C.bg3,borderRadius:10,border:`1px solid ${C.b1}`,marginBottom:12 }}>
+                  {[{l:"Members",v:p.members,i:"👥"},{l:"Redemptions",v:p.redemptions,i:"🎁"},{l:"Scans",v:p.scans,i:"◈"}].map(s=>(
+                    <div key={s.l} style={{ textAlign:"center" }}>
+                      <div style={{ fontSize:16,marginBottom:2 }}>{s.i}</div>
+                      <div style={{ fontWeight:800,fontSize:18,color:C.t1,letterSpacing:"-.04em" }}>{s.v.toLocaleString()}</div>
+                      <div style={{ fontSize:11,color:C.t4 }}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"flex",gap:8 }}>
+                  <button onClick={()=>{setEd(p);setModal(true);}} style={{ ...btnG(true),flex:1,fontSize:13,padding:"9px" }}>Edit</button>
+                  <button onClick={()=>remove(p.id)} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>
                 </div>
               </div>
-
-              {/* Stats */}
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:14,background:C.bg3,borderRadius:10,border:`1px solid ${C.b1}`,marginBottom:12 }}>
-                {[{l:"Members",v:p.members,i:"👥"},{l:"Redemptions",v:p.redemptions,i:"🎁"},{l:"Scans",v:p.scans,i:"◈"}].map(s=>(
-                  <div key={s.l} style={{ textAlign:"center" }}>
-                    <div style={{ fontSize:16,marginBottom:2 }}>{s.i}</div>
-                    <div style={{ fontWeight:800,fontSize:18,color:C.t1,letterSpacing:"-.04em" }}>{s.v.toLocaleString()}</div>
-                    <div style={{ fontSize:11,color:C.t4 }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display:"flex",gap:8 }}>
-                <button onClick={()=>{setEd(p);setModal(true);}} style={{ ...btnG(true),flex:1,fontSize:13,padding:"9px" }}>Edit</button>
-<button onClick={()=>remove(p.id)} style={{ flex:1,padding:"9px",fontSize:13,background:"none",border:`1px solid ${C.err}28`,color:C.err,borderRadius:10,cursor:"pointer",minHeight:44 }}>Delete</button>                
-              </div>
-            </div>
-          ))
+            ))
         }
       </div>
       {modal && <RwdModal init={ed} onSave={save} onClose={()=>{setModal(false);setEd(null);}}/>}
     </DashShell>
   );
 }
-// netlify/functions/send-broadcast.js
-// Sends a broadcast email to all loyalty members for a given business slug
-// Uses Resend for delivery and Supabase to fetch member list
-
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-const headers = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Content-Type": "application/json",
-};
-
-exports.handler = async (event) => {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "" };
-  }
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
-  }
-
-  let body;
-  try {
-    body = JSON.parse(event.body);
-  } catch {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid JSON" }) };
-  }
-
-  const { businessSlug, businessName, subject, message, userEmail } = body;
-
-  if (!businessSlug || !businessName || !subject || !message) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: "businessSlug, businessName, subject, and message are required" }) };
-  }
-
-  // ── Fetch members from Supabase ───────────────────────────────────────────
-  const supabaseRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/loyalty_members?business_slug=eq.${encodeURIComponent(businessSlug)}&select=email,stamps,goal,reward`,
-    {
-      headers: {
-        apikey: SUPABASE_SERVICE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  const members = await supabaseRes.json();
-
-  if (!Array.isArray(members) || members.length === 0) {
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, sent: 0, message: "No members found for this business." }) };
-  }
-
-  // ── Rate limit: max 2 broadcasts per day (checked via simple timestamp in KV — skip for now) ──
-
-  let sent = 0;
-  const errors = [];
-
-  for (const member of members) {
-    const stampsLeft = Math.max(0, (member.goal || 10) - (member.stamps || 0));
-    const html = `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#000;color:#fff;border-radius:12px;overflow:hidden">
-        <!-- Header -->
-        <div style="background:#D4A017;padding:20px 24px;text-align:center">
-          <div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-0.02em">${businessName}</div>
-          <div style="font-size:12px;color:#000;margin-top:3px;opacity:0.7">Loyalty Rewards</div>
-        </div>
-
-        <!-- Body -->
-        <div style="padding:28px 24px">
-          <div style="font-size:15px;color:#d4d4d4;line-height:1.7;white-space:pre-wrap;margin-bottom:24px">${message}</div>
-
-          <!-- Stamp progress -->
-          <div style="background:#171717;border:1px solid #252525;border-radius:10px;padding:16px;margin-bottom:24px;text-align:center">
-            <div style="font-size:11px;font-weight:700;color:#525252;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Your loyalty progress</div>
-            <div style="font-size:28px;font-weight:900;color:#D4A017;letter-spacing:-0.04em">${member.stamps || 0} / ${member.goal || 10}</div>
-            <div style="font-size:13px;color:#a3a3a3;margin-top:4px">
-              ${stampsLeft === 0
-                ? `You've earned your <strong style="color:#D4A017">${member.reward || "reward"}</strong>! Come in to redeem.`
-                : `Only <strong style="color:#D4A017">${stampsLeft} more visit${stampsLeft !== 1 ? "s" : ""}</strong> until your <strong style="color:#D4A017">${member.reward || "free reward"}</strong>`
-              }
-            </div>
-          </div>
-
-          <p style="color:#525252;font-size:12px;line-height:1.6;text-align:center;margin:0">
-            You're receiving this because you joined ${businessName}'s loyalty rewards program.<br/>
-            <a href="mailto:info@xhibitur.com?subject=Unsubscribe&body=Please unsubscribe ${member.email} from ${businessName} messages." style="color:#525252">Unsubscribe</a>
-          </p>
-        </div>
-
-        <!-- Footer -->
-        <div style="background:#0a0a0a;padding:14px 24px;text-align:center;border-top:1px solid #1a1a1a">
-          <div style="font-size:11px;color:#333">Powered by <strong style="color:#D4A017">Xhibitur Rewards</strong> · rewards.xhibitur.com</div>
-        </div>
-      </div>
-    `;
-
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: `${businessName} via Xhibitur Rewards <notifications@xhibitur.com>`,
-          to: member.email,
-          subject,
-          html,
-        }),
-      });
-
-      if (res.ok) {
-        sent++;
-      } else {
-        const err = await res.json();
-        errors.push({ email: member.email, error: err.message });
-      }
-    } catch (e) {
-      errors.push({ email: member.email, error: e.message });
-    }
-
-    // Small delay to avoid rate limiting
-    await new Promise(r => setTimeout(r, 50));
-  }
-
-  return {
-    statusCode: 200,
-    headers,
-    body: JSON.stringify({ success: true, sent, total: members.length, errors }),
-  };
-};
-// ── Broadcast Page ────────────────────────────────────────────────────────────
-function BroadcastPage() {
-  const { user } = useAuth();
-  const { nav } = useNav();
-  const w = useW(); const mob = w < 640;
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
-  const [err, setErr] = useState("");
-
-  const bizSlug = user?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "";
-  const bizName = user?.name || "Your Business";
-  const si = { ...inp, background: C.bg3, border: `1px solid ${C.b2}` };
-
-  const send = async () => {
-    if (!subject.trim()) { setErr("Please enter a subject line."); return; }
-    if (!message.trim()) { setErr("Please enter a message."); return; }
-    if (message.trim().length < 20) { setErr("Message is too short. Write at least a sentence."); return; }
-    setBusy(true); setErr(""); setResult(null);
-    try {
-      const res = await fetch("/.netlify/functions/send-broadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessSlug: bizSlug, businessName: bizName, subject: subject.trim(), message: message.trim(), userEmail: user?.email }),
-      });
-      const data = await res.json();
-      if (data.success) { setResult(data); setSubject(""); setMessage(""); }
-      else { setErr(data.error || "Something went wrong. Please try again."); }
-    } catch (e) { setErr("Something went wrong. Please try again."); }
-    setBusy(false);
-  };
-
-  return (
-    <DashShell>
-      <PgHead title="Message Members" sub="Send an email broadcast to all your loyalty members."/>
-      <div style={{ maxWidth: mob ? undefined : 580 }}>
-        <div style={{ ...card(), padding: mob ? 14 : 18, marginBottom: 16, border: `1px solid ${C.vi}25`, background: C.viDim }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: C.t1, marginBottom: 6 }}>📣 How this works</div>
-          <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.7 }}>Your message goes to every customer who checked in and saved their email at your loyalty page. Each email is personalized with their current stamp count and shows how close they are to their reward.</div>
-        </div>
-        {result && (
-          <div style={{ ...card(), padding: mob ? 16 : 22, marginBottom: 16, border: `1px solid ${C.ok}30`, background: C.ok+"08", textAlign: "center" }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.t1, marginBottom: 6 }}>Broadcast sent!</div>
-            <div style={{ fontSize: 14, color: C.t4, marginBottom: 4 }}>Delivered to <strong style={{ color: C.ok }}>{result.sent}</strong> of {result.total} members.</div>
-            {result.errors?.length > 0 && <div style={{ fontSize: 12, color: C.warn, marginTop: 6 }}>{result.errors.length} failed to deliver.</div>}
-            <button onClick={() => setResult(null)} style={{ ...btnG(), fontSize: 13, padding: "9px 20px", marginTop: 16 }}>Send another</button>
-          </div>
-        )}
-        {!result && (
-          <div style={{ ...card(true), padding: mob ? 18 : 24, border: `1px solid ${C.b2}` }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ background: C.bg4, border: `1px solid ${C.b2}`, borderRadius: 8, padding: "10px 14px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.t4, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 4 }}>From</div>
-                <div style={{ fontSize: 13, color: C.t3 }}>{bizName} via Xhibitur Rewards &lt;notifications@xhibitur.com&gt;</div>
-              </div>
-              <div>
-                <label style={lbl}>Subject line</label>
-                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Special offer just for our loyal customers 🎉" style={si} onFocus={e => e.target.style.borderColor=C.vi} onBlur={e => e.target.style.borderColor=C.b2}/>
-              </div>
-              <div>
-                <label style={lbl}>Message</label>
-                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="e.g. Hey! We're running a buy-one-get-one on all lattes this Friday only. Come in and show this email at the counter." rows={5} style={{ ...si, resize: "vertical", minHeight: 120, lineHeight: 1.6 }} onFocus={e => e.target.style.borderColor=C.vi} onBlur={e => e.target.style.borderColor=C.b2}/>
-                <div style={{ fontSize: 11, color: C.t4, marginTop: 5 }}>Each email will automatically include the customer's stamp progress below your message.</div>
-              </div>
-              <div style={{ background: C.bg4, border: `1px solid ${C.b2}`, borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.t4, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 10 }}>Auto-added to every email</div>
-                <div style={{ background: C.bg3, border: `1px solid ${C.b2}`, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: C.t4, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".07em" }}>Your loyalty progress</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: C.vi }}>7 / 10</div>
-                  <div style={{ fontSize: 12, color: C.t3, marginTop: 4 }}>Only <strong style={{ color: C.vi }}>3 more visits</strong> until your <strong style={{ color: C.vi }}>free coffee</strong></div>
-                </div>
-              </div>
-              {err && <div style={{ background: C.err+"15", border: `1px solid ${C.err}30`, borderRadius: 8, padding: "10px 13px", color: C.err, fontSize: 13 }}>{err}</div>}
-              <button onClick={send} disabled={busy} style={{ ...btnP(C.vi, true), fontSize: 15, padding: "13px", opacity: busy ? .7 : 1 }}>{busy ? "Sending..." : "Send to all members →"}</button>
-              <p style={{ textAlign: "center", fontSize: 12, color: C.t4, margin: 0 }}>All emails include an unsubscribe link · CAN-SPAM compliant</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </DashShell>
-  );
-}
-
-// ── Analytics Page ──
-const HIST=[0,0,0,0,0,0,0,0,0,0,0,0];
-const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function AnalyticsPage() {
   const w=useW(); const mob=w<640;
-  const HIST=[0,0,0,0,0,0,0,0,0,0,0,0];
-  const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const mx=Math.max(...HIST,1);
   return (
     <DashShell>
       <PgHead title="Analytics" sub="Scans, redemptions and member growth."/>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16 }}>
         <Stat icon="◈" label="Total Scans" value="0" accent={C.vi}/>
-        <Stat icon="📅" label="This Month" value="0" accent={C.em}/>
         <Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
         <Stat icon="👥" label="Members" value="0" accent={C.cy}/>
       </div>
-      <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
-        <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:16 }}>Scan volume — last 12 months</div>
-        <div style={{ display:"flex",alignItems:"flex-end",gap:3,height:72 }}>
-          {HIST.map((v,i)=>(
-            <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3 }}>
-              <div style={{ flex:1,width:"100%",background:C.vi+"14",borderRadius:"3px 3px 0 0",display:"flex",alignItems:"flex-end" }}>
-                <div style={{ width:"100%",height:`${(v/mx)*100}%`,background:C.vi,borderRadius:"3px 3px 0 0",minHeight:3 }}/>
-              </div>
-              <span style={{ fontSize:7,color:C.t4 }}>{MOS[i]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:14 }}>
-        <div style={{ ...card(),padding:mob?14:18 }}>
-          <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Top QR codes</div>
-          <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No scan data yet. Scans will appear here once customers use your QR codes.</div>
-        </div>
-        <div style={{ ...card(),padding:mob?14:18 }}>
-          <div style={{ fontWeight:700,fontSize:13,color:C.t2,marginBottom:14 }}>Device split</div>
-          <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"20px 0" }}>No data yet. Device breakdown will appear once customers start scanning.</div>
-        </div>
-      </div>
-      <div style={{ ...card(),padding:mob?14:18,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap" }}>
-        <div><div style={{ fontWeight:600,fontSize:14,color:C.t1,marginBottom:3 }}>Export analytics data</div><div style={{ fontSize:13,color:C.t4 }}>Full scan history and redemption logs as CSV.</div></div>
-        <button style={{ ...btnP(),padding:"10px 18px",fontSize:14,width:mob?"100%":undefined }}>Download CSV</button>
+      <div style={{ ...card(),padding:mob?16:20,textAlign:"center" }}>
+        <div style={{ fontSize:14,color:C.t4,padding:"32px 0" }}>Analytics will populate as customers scan your QR codes and check in.</div>
       </div>
     </DashShell>
-  ); 
+  );
 }
 
-// ── Account Page ──────────────────────────────────────────────────────────────
 function AccountPage() {
   const { user,signOut } = useAuth(); const { nav } = useNav();
   const w=useW(); const mob=w<640;
@@ -2054,7 +1248,6 @@ function AccountPage() {
           <div style={{ marginBottom:20 }}><label style={lbl}>Email</label><input value={user?.email} disabled style={{...si,background:C.bg4,color:C.t4,cursor:"not-allowed"}}/></div>
           <button onClick={()=>{setOk(true);setTimeout(()=>setOk(false),2000);}} style={{ ...btnP(C.vi,mob),fontSize:15,padding:"12px 22px" }}>{ok?"✓ Saved!":"Save changes"}</button>
         </div>
-
         <div style={{ ...card(),padding:mob?16:22 }}>
           <div style={{ fontWeight:700,fontSize:14,color:C.t2,marginBottom:14 }}>Plan & billing</div>
           <div style={{ padding:16,background:C.bg3,borderRadius:10,border:`1px solid ${C.b2}`,marginBottom:14 }}>
@@ -2065,18 +1258,9 @@ function AccountPage() {
               </div>
               {isTrial && <button onClick={()=>nav("pricing")} style={{ ...btnP(),padding:"8px 16px",fontSize:13 }}>Activate plan — $49.99/mo</button>}
             </div>
-            <div style={{ fontSize:12,color:C.t4,lineHeight:1.6 }}>
-              {isTrial
-                ?"All features unlocked during your 14-day trial. $49.99/month after — no credit card needed yet."
-                :"All features included. Unlimited QRs, unlimited rewards, unlimited scans."
-              }
-            </div>
-          </div>
-          <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"13px 14px",fontSize:13,color:C.t4,lineHeight:1.65 }}>
-            <span style={{ color:C.viL,fontWeight:600 }}>🔒 How stamps work:</span> Customer stamps are stored privately on each customer's device by default — no account needed, no data collected. Customers who want to sync stamps across phones can optionally save their progress with their email.
+            <div style={{ fontSize:12,color:C.t4,lineHeight:1.6 }}>{isTrial?"All features unlocked during your 14-day trial. $49.99/month after — no credit card needed yet.":"All features included. Unlimited QRs, unlimited rewards, unlimited scans."}</div>
           </div>
         </div>
-
         <div style={{ ...card(),padding:mob?16:22,border:`1px solid ${C.err}1e` }}>
           <div style={{ fontWeight:700,fontSize:14,color:C.err,marginBottom:10 }}>Danger zone</div>
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10 }}>
@@ -2089,203 +1273,95 @@ function AccountPage() {
   );
 }
 
-// ── Check-In Page ─────────────────────────────────────────────────────────────
 function CheckInPage() {
   const { nav } = useNav();
   const w=useW(); const mob=w<640;
-
-  // Get business slug from URL hash e.g. #/checkin/harlem-cafe
   const slug = window.location.hash.replace(/^#\/?checkin\/?/,"").split("?")[0] || "";
+  const [step,setStep]=useState("enter");
+  const [email,setEmail]=useState("");
+  const [name,setName]=useState("");
+  const [stamps,setStamps]=useState(0);
+  const [goal,setGoal]=useState(10);
+  const [reward,setReward]=useState("Free item");
+  const [bizName,setBizName]=useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [redeemCode,setRedeemCode]=useState("");
+  const [tiers,setTiers]=useState(null);
+  const [unlockedTier,setUnlockedTier]=useState(null);
+  const [refEnabled,setRefEnabled]=useState(false);
+  const [refBonus,setRefBonus]=useState("1 bonus stamp");
+  const [refLink,setRefLink]=useState("");
+  const [saveEmail,setSaveEmail]=useState("");
+  const [saveErr,setSaveErr]=useState("");
+  const [saveBusy,setSaveBusy]=useState(false);
+  const [restoreCode,setRestoreCode]=useState("");
+  const [restoreInput,setRestoreInput]=useState("");
 
-  const [step, setStep] = useState("enter"); // enter | stamped | welcome | redeem | tier
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [stamps, setStamps] = useState(0);
-  const [goal, setGoal] = useState(10);
-  const [reward, setReward] = useState("Free item");
-  const [bizName, setBizName] = useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [redeemCode, setRedeemCode] = useState("");
-  const [tiers, setTiers] = useState(null);
-  const [unlockedTier, setUnlockedTier] = useState(null);
-  const [refEnabled, setRefEnabled] = useState(false);
-  const [refBonus, setRefBonus] = useState("1 bonus stamp");
-  const [refLink, setRefLink] = useState("");
-  const [saveEmail, setSaveEmail] = useState("");
-  const [saveErr, setSaveErr] = useState("");
-  const [saveBusy, setSaveBusy] = useState(false);
-  const [restoreCode, setRestoreCode] = useState("");
-  const [restoreInput, setRestoreInput] = useState("");
-
-  // Load business info and reward settings from KV
-  useEffect(() => {
+  useEffect(()=>{
     if (!slug) return;
     setBizName(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-    // Fetch reward settings from our Netlify function
-    fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`)
-      .then(r=>r.json())
-      .then(data=>{
-        if (data.name) setBizName(data.name);
-        if (data.rewardGoal) setGoal(data.rewardGoal);
-        if (data.rewardName) setReward(data.rewardName);
-        if (data.tiers) setTiers(data.tiers);
-        if (data.refEnabled) setRefEnabled(true);
-        if (data.refBonus) setRefBonus(data.refBonus);
-      })
-      .catch(()=>{});
-
-    // Handle referral — if ?ref= in URL award bonus stamp to referrer
+    fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`).then(r=>r.json()).then(data=>{
+      if (data.name) setBizName(data.name);
+      if (data.rewardGoal) setGoal(data.rewardGoal);
+      if (data.rewardName) setReward(data.rewardName);
+      if (data.tiers) setTiers(data.tiers);
+      if (data.refEnabled) setRefEnabled(true);
+      if (data.refBonus) setRefBonus(data.refBonus);
+    }).catch(()=>{});
     const params = new URLSearchParams(window.location.hash.split("?")[1]||"");
     const refCode = params.get("ref");
-    if (refCode) {
-      try {
-        const refEmail = atob(refCode);
-        const refKey = `stamps_${slug}_${refEmail}_ref_${Date.now()}`;
-        // Mark this referral as pending — awarded when friend completes first check-in
-        sessionStorage.setItem("pending_ref", JSON.stringify({ slug, refEmail }));
-      } catch(e) {}
-    }
+    if (refCode) { try { const refEmail=atob(refCode); sessionStorage.setItem("pending_ref",JSON.stringify({slug,refEmail})); } catch(e){} }
   },[slug]);
 
   const handleCheckin = async e => {
     e.preventDefault();
     if (!email) { setErr("Please enter your email."); return; }
     setBusy(true); setErr("");
-
     try {
-      const key = `stamps_${slug}_${email.toLowerCase()}`;
-      const last = localStorage.getItem(`${key}_last`);
-      const now = Date.now();
-      const COOLDOWN = 4 * 60 * 60 * 1000;
-
-      if (last && now - parseInt(last) < COOLDOWN) {
-        const hoursLeft = Math.ceil((COOLDOWN - (now - parseInt(last))) / 3600000);
-        setErr(`You already checked in recently. Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn your next stamp.`);
-        setBusy(false);
-        return;
-      }
-
-      const isNew = !localStorage.getItem(`${key}_name`) && !localStorage.getItem(key);
-      const current = parseInt(localStorage.getItem(key) || "0");
-
-      // Handle pending referral bonus — award to referrer
-      const pendingRef = sessionStorage.getItem("pending_ref");
-      if (pendingRef && isNew) {
-        try {
-          const { slug:rSlug, refEmail } = JSON.parse(pendingRef);
-          if (rSlug === slug && refEmail !== email.toLowerCase()) {
-            const refKey = `stamps_${slug}_${refEmail}`;
-            const refStamps = parseInt(localStorage.getItem(refKey)||"0") + 1;
-            localStorage.setItem(refKey, refStamps.toString());
-            sessionStorage.removeItem("pending_ref");
-          }
-        } catch(e) {}
-      }
-
-      const newStamps = current + 1;
-
-      // Check tiers
-      if (tiers && tiers.length > 0) {
-        const maxTier = tiers[tiers.length - 1]; // Gold is the last tier
-        const newlyUnlocked = tiers.find(t => t.stamps === newStamps);
-
+      const key=`stamps_${slug}_${email.toLowerCase()}`;
+      const last=localStorage.getItem(`${key}_last`);
+      const now=Date.now();
+      const COOLDOWN=4*60*60*1000;
+      if (last&&now-parseInt(last)<COOLDOWN) { const hoursLeft=Math.ceil((COOLDOWN-(now-parseInt(last)))/3600000); setErr(`You already checked in recently. Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn your next stamp.`); setBusy(false); return; }
+      const isNew=!localStorage.getItem(`${key}_name`)&&!localStorage.getItem(key);
+      const current=parseInt(localStorage.getItem(key)||"0");
+      const pendingRef=sessionStorage.getItem("pending_ref");
+      if (pendingRef&&isNew) { try { const {slug:rSlug,refEmail}=JSON.parse(pendingRef); if(rSlug===slug&&refEmail!==email.toLowerCase()){const refKey=`stamps_${slug}_${refEmail}`;localStorage.setItem(refKey,(parseInt(localStorage.getItem(refKey)||"0")+1).toString());sessionStorage.removeItem("pending_ref");} } catch(e){} }
+      const newStamps=current+1;
+      if (tiers&&tiers.length>0) {
+        const maxTier=tiers[tiers.length-1];
+        const newlyUnlocked=tiers.find(t=>t.stamps===newStamps);
         if (newlyUnlocked) {
-          const isGold = newlyUnlocked.stamps === maxTier.stamps;
-
-          if (isGold) {
-            // Gold reached — generate redemption code, reset stamps, mark permanent Gold
-            const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-            localStorage.setItem(key, "0"); // reset to 0
-            localStorage.removeItem(`${key}_last`);
-            localStorage.setItem(`${key}_gold`, "true"); // permanent Gold status
-            setRedeemCode(code);
-            setStamps(0);
-            setUnlockedTier({ ...newlyUnlocked, redemptionCode: code });
-            setStep("tier");
-          } else {
-            // Bronze or Silver — save stamp count, show tier screen
-            localStorage.setItem(key, newStamps.toString());
-            localStorage.setItem(`${key}_last`, now.toString());
-            if (name) localStorage.setItem(`${key}_name`, name);
-            setStamps(newStamps);
-            setUnlockedTier(newlyUnlocked);
-            setStep("tier");
-          }
-          setBusy(false);
-          return;
+          const isGold=newlyUnlocked.stamps===maxTier.stamps;
+          if (isGold) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); localStorage.setItem(`${key}_gold`,"true"); setRedeemCode(code); setStamps(0); setUnlockedTier({...newlyUnlocked,redemptionCode:code}); setStep("tier"); }
+          else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); if(name) localStorage.setItem(`${key}_name`,name); setStamps(newStamps); setUnlockedTier(newlyUnlocked); setStep("tier"); }
+          setBusy(false); return;
         }
-
-        // After Gold reset — check if they hit Gold again on next cycle
-        const isGoldAgain = localStorage.getItem(`${key}_gold`) === "true" && newStamps === maxTier.stamps;
-        if (isGoldAgain) {
-          const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-          localStorage.setItem(key, "0");
-          localStorage.removeItem(`${key}_last`);
-          setRedeemCode(code);
-          setStamps(0);
-          setUnlockedTier({ ...maxTier, redemptionCode: code, repeat: true });
-          setStep("tier");
-          setBusy(false);
-          return;
-        }
+        const isGoldAgain=localStorage.getItem(`${key}_gold`)==="true"&&newStamps===maxTier.stamps;
+        if (isGoldAgain) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setUnlockedTier({...maxTier,redemptionCode:code,repeat:true}); setStep("tier"); setBusy(false); return; }
       }
-
-      // Standard stamp card (no tiers)
-      if (!tiers && newStamps >= goal) {
-        const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-        localStorage.setItem(key, "0");
-        localStorage.removeItem(`${key}_last`);
-        setRedeemCode(code);
-        setStamps(0);
-        setStep("redeem");
-      } else {
-        localStorage.setItem(key, newStamps.toString());
-        localStorage.setItem(`${key}_last`, now.toString());
-        setStamps(newStamps);
-        if (name) localStorage.setItem(`${key}_name`, name);
-
-        // Generate referral link
-        if (refEnabled) {
-          const code = btoa(email.toLowerCase());
-          setRefLink(`${window.location.origin}${window.location.pathname}#/checkin/${slug}?ref=${code}`);
-        }
-
-        setStep(isNew ? "welcome" : "stamped");
-      }
-    } catch(x) {
-      setErr("Something went wrong. Please try again.");
-    }
+      if (!tiers&&newStamps>=goal) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setStep("redeem"); }
+      else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); setStamps(newStamps); if(name) localStorage.setItem(`${key}_name`,name); if(refEnabled){const code=btoa(email.toLowerCase());setRefLink(`${window.location.origin}${window.location.pathname}#/checkin/${slug}?ref=${code}`);} setStep(isNew?"welcome":"stamped"); }
+    } catch(x) { setErr("Something went wrong. Please try again."); }
     setBusy(false);
   };
 
   if (!slug) return (
     <div style={{ minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
-      <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:40,marginBottom:16 }}>⚠️</div>
-        <div style={{ fontSize:18,fontWeight:700,color:C.t1,marginBottom:8 }}>Invalid QR code</div>
-        <div style={{ fontSize:14,color:C.t4 }}>This QR code is not linked to a business.</div>
-      </div>
+      <div style={{ textAlign:"center" }}><div style={{ fontSize:40,marginBottom:16 }}>⚠️</div><div style={{ fontSize:18,fontWeight:700,color:C.t1,marginBottom:8 }}>Invalid QR code</div><div style={{ fontSize:14,color:C.t4 }}>This QR code is not linked to a business.</div></div>
     </div>
   );
 
   return (
     <div style={{ minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20 }}>
-      {/* Header */}
-      <div style={{ marginBottom:32,textAlign:"center" }}>
-        <Wordmark/>
-        <div style={{ fontSize:13,color:C.t4,marginTop:6 }}>Loyalty Rewards</div>
-      </div>
-
+      <div style={{ marginBottom:32,textAlign:"center" }}><Wordmark/><div style={{ fontSize:13,color:C.t4,marginTop:6 }}>Loyalty Rewards</div></div>
       <div style={{ width:"100%",maxWidth:400,animation:"fadeUp .28s ease" }}>
-
-        {/* Business name */}
         <div style={{ textAlign:"center",marginBottom:24 }}>
           <div style={{ fontSize:22,fontWeight:800,color:C.t1,letterSpacing:"-.02em" }}>{bizName}</div>
           <div style={{ fontSize:13,color:C.t4,marginTop:4 }}>Loyalty Rewards Program</div>
         </div>
 
-        {/* STEP: Enter email */}
         {step==="enter" && (
           <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
             <div style={{ textAlign:"center",marginBottom:20 }}>
@@ -2294,89 +1370,42 @@ function CheckInPage() {
               <div style={{ fontSize:13,color:C.t4 }}>Collect {goal} stamps and get {reward}</div>
             </div>
             <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div>
-                <label style={lbl}>Your email</label>
-                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} required
-                  onFocus={e=>e.target.style.borderColor=C.vi}
-                  onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
-              {!localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_name`) && email && (
-                <div>
-                  <label style={lbl}>Your name (optional)</label>
-                  <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="First name" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
-                    onFocus={e=>e.target.style.borderColor=C.vi}
-                    onBlur={e=>e.target.style.borderColor=C.b2}/>
-                </div>
+              <div><label style={lbl}>Your email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+              {!localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_name`)&&email&&(
+                <div><label style={lbl}>Your name (optional)</label><input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="First name" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
               )}
               {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
-              <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>
-                {busy?"Checking in…":"Check in & earn stamp ✓"}
-              </button>
+              <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Checking in…":"Check in & earn stamp ✓"}</button>
             </form>
             <div style={{ marginTop:14,background:C.bg3,borderRadius:8,padding:"10px 12px" }}>
-              <div style={{ fontSize:11,color:C.t4,lineHeight:1.6,textAlign:"center" }}>
-                🔒 <strong style={{ color:C.t3 }}>Your privacy is protected.</strong> Stamps are stored privately on your device. No account required. No data collected.
-              </div>
+              <div style={{ fontSize:11,color:C.t4,lineHeight:1.6,textAlign:"center" }}>🔒 <strong style={{ color:C.t3 }}>Your privacy is protected.</strong> Stamps are stored privately on your device. No account required.</div>
             </div>
-
-            {/* Restore stamps option */}
-            <button onClick={()=>setStep("restore")} style={{ width:"100%",marginTop:10,background:"none",border:"none",color:C.t4,fontSize:12,cursor:"pointer",padding:"6px",textDecoration:"underline" }}>
-              Have a restore code? Tap here
-            </button>
+            <button onClick={()=>setStep("restore")} style={{ width:"100%",marginTop:10,background:"none",border:"none",color:C.t4,fontSize:12,cursor:"pointer",padding:"6px",textDecoration:"underline" }}>Have a restore code? Tap here</button>
           </div>
         )}
 
-        {/* STEP: Stamp awarded */}
         {(step==="stamped"||step==="welcome") && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
             <div style={{ fontSize:48,marginBottom:12 }}>{step==="welcome"?"🎉":"⭐"}</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>
-              {step==="welcome"?`Welcome${name?`, ${name}`:""}!`:"Stamp added!"}
-            </div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>
-              {step==="welcome"?"You've earned your first stamp!":"You now have"} {stamps} of {goal} stamps
-            </div>
-
-            {/* Stamp progress */}
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{step==="welcome"?`Welcome${name?`, ${name}`:""}!`:"Stamp added!"}</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>{step==="welcome"?"You've earned your first stamp!":"You now have"} {stamps} of {goal} stamps</div>
             <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:20 }}>
               {Array.from({length:Math.min(goal,10)}).map((_,i)=>(
-                <div key={i} style={{ width:32,height:32,borderRadius:"50%",background:i<Math.min(stamps,10)?C.vi:C.bg3,border:`2px solid ${i<Math.min(stamps,10)?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>
-                  {i<Math.min(stamps,10)?"⭐":""}
-                </div>
+                <div key={i} style={{ width:32,height:32,borderRadius:"50%",background:i<Math.min(stamps,10)?C.vi:C.bg3,border:`2px solid ${i<Math.min(stamps,10)?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>{i<Math.min(stamps,10)?"⭐":""}</div>
               ))}
               {goal>10 && <div style={{ fontSize:11,color:C.t4,width:"100%",marginTop:4 }}>{stamps} of {goal} total stamps</div>}
             </div>
-
             <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:16 }}>
-              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>
-                {goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!
-              </div>
+              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>{goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!</div>
             </div>
-
-            {/* Gold status badge */}
-            {localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_gold`)==="true" && (
-              <div style={{ background:C.vi+"18",border:`1px solid ${C.vi}30`,borderRadius:10,padding:"8px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:6,justifyContent:"center" }}>
-                <span style={{ fontSize:14 }}>🥇</span>
-                <span style={{ fontSize:12,fontWeight:700,color:C.vi }}>Gold Member</span>
-              </div>
-            )}
-
-            {/* Save progress */}
             <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,padding:"14px",marginBottom:14,textAlign:"left" }}>
               <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>💾 Save your progress</div>
               <div style={{ fontSize:12,color:C.t4,marginBottom:10,lineHeight:1.6 }}>Stamps live on this device. Save them so you never lose your progress if you switch phones.</div>
               <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
                 <button onClick={()=>setStep("save-email")} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>📧 Save with email — sync across devices</button>
-                <button onClick={()=>{
-                  const payload = `${email.toLowerCase()}:${slug}:${stamps}:${Date.now()}`;
-                  const code = btoa(payload).replace(/[+=\/]/g,"").slice(0,20).toUpperCase();
-                  localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_code`,code);
-                  setRestoreCode(code); setStep("show-code");
-                }} style={{ ...btnG(true),fontSize:13,padding:"9px" }}>🔑 Get a private backup code</button>
+                <button onClick={()=>{ const payload=`${email.toLowerCase()}:${slug}:${stamps}:${Date.now()}`; const code=btoa(payload).replace(/[+=\/]/g,"").slice(0,20).toUpperCase(); localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_code`,code); setRestoreCode(code); setStep("show-code"); }} style={{ ...btnG(true),fontSize:13,padding:"9px" }}>🔑 Get a private backup code</button>
               </div>
             </div>
-
-            {/* Referral */}
             {refLink && (
               <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"12px",marginBottom:14,textAlign:"left" }}>
                 <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>🤝 Refer a friend — earn a bonus stamp!</div>
@@ -2384,12 +1413,10 @@ function CheckInPage() {
                 <button onClick={()=>{ if(navigator.share){navigator.share({title:`Join ${bizName} Rewards`,text:`Join me at ${bizName} — earn free rewards!`,url:refLink});}else{navigator.clipboard.writeText(refLink);alert("Referral link copied!");}}} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>Share referral link →</button>
               </div>
             )}
-
             <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px",width:"100%" }}>Done for now</button>
           </div>
         )}
 
-        {/* STEP: Save with email */}
         {step==="save-email" && (
           <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40` }}>
             <div style={{ textAlign:"center",marginBottom:20 }}>
@@ -2398,33 +1425,14 @@ function CheckInPage() {
               <div style={{ fontSize:13,color:C.t4,lineHeight:1.6 }}>We'll email you a restore code so your stamps follow you to any device.</div>
             </div>
             <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div>
-                <label style={lbl}>Your email</label>
-                <input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com"
-                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
+              <div><label style={lbl}>Your email</label><input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
               {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
-              <button onClick={async()=>{
-                if(!saveEmail){setSaveErr("Please enter your email.");return;}
-                setSaveBusy(true);setSaveErr("");
-                try{
-                  const res=await fetch("/.netlify/functions/save-stamps",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:saveEmail,slug,bizName,stamps,goal,reward})});
-                  const data=await res.json();
-                  if(data.success){localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_saved_email`,saveEmail);setRestoreCode(data.restoreCode);setStep("saved");}
-                  else setSaveErr("Something went wrong. Try again.");
-                }catch(e){setSaveErr("Something went wrong. Try again.");}
-                setSaveBusy(false);
-              }} disabled={saveBusy} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px",opacity:saveBusy?.7:1 }}>
-                {saveBusy?"Sending…":"Send restore code →"}
-              </button>
+              <button onClick={async()=>{ if(!saveEmail){setSaveErr("Please enter your email.");return;} setSaveBusy(true);setSaveErr(""); try{ const res=await fetch("/.netlify/functions/save-stamps",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:saveEmail,slug,bizName,stamps,goal,reward})}); const data=await res.json(); if(data.success){localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_saved_email`,saveEmail);setRestoreCode(data.restoreCode);setStep("saved");}else setSaveErr("Something went wrong. Try again."); }catch(e){setSaveErr("Something went wrong. Try again.");} setSaveBusy(false); }} disabled={saveBusy} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px",opacity:saveBusy?.7:1 }}>{saveBusy?"Sending…":"Send restore code →"}</button>
               <button onClick={()=>setStep("stamped")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
             </div>
-            <div style={{ marginTop:12,fontSize:11,color:C.t4,textAlign:"center",lineHeight:1.6 }}>🔒 We use your email only to send this code. We don't track visits or share your data.</div>
           </div>
         )}
 
-        {/* STEP: Show backup code */}
         {step==="show-code" && (
           <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40`,textAlign:"center" }}>
             <div style={{ fontSize:36,marginBottom:12 }}>🔑</div>
@@ -2439,20 +1447,15 @@ function CheckInPage() {
           </div>
         )}
 
-        {/* STEP: Saved confirmation */}
         {step==="saved" && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center" }}>
             <div style={{ fontSize:48,marginBottom:12 }}>✅</div>
             <div style={{ fontSize:20,fontWeight:800,color:C.t1,marginBottom:8 }}>Stamps saved!</div>
             <div style={{ fontSize:14,color:C.t4,marginBottom:20,lineHeight:1.6 }}>We emailed your restore code to <strong style={{ color:C.t2 }}>{saveEmail}</strong>. Check your inbox.</div>
-            <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"14px",marginBottom:20,textAlign:"left" }}>
-              <div style={{ fontSize:12,color:C.t4,lineHeight:1.7 }}><strong style={{ color:C.t2 }}>To restore on a new device:</strong><br/>Visit this loyalty page, tap "Have a restore code?" and enter the code from your email.</div>
-            </div>
             <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Done</button>
           </div>
         )}
 
-        {/* STEP: Restore stamps */}
         {step==="restore" && (
           <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
             <div style={{ textAlign:"center",marginBottom:20 }}>
@@ -2461,61 +1464,25 @@ function CheckInPage() {
               <div style={{ fontSize:13,color:C.t4 }}>Enter your email and restore code.</div>
             </div>
             <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div>
-                <label style={lbl}>Your email</label>
-                <input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com"
-                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
-              <div>
-                <label style={lbl}>Restore code</label>
-                <input value={restoreInput} onChange={e=>setRestoreInput(e.target.value.toUpperCase())} placeholder="XXXXXXXXXXXXXXXXXXXX"
-                  style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}`,fontFamily:"DM Mono,monospace",letterSpacing:".04em" }}
-                  onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-              </div>
+              <div><label style={lbl}>Your email</label><input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+              <div><label style={lbl}>Restore code</label><input value={restoreInput} onChange={e=>setRestoreInput(e.target.value.toUpperCase())} placeholder="XXXXXXXXXXXXXXXXXXXX" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}`,fontFamily:"DM Mono,monospace",letterSpacing:".04em" }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
               {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
-              <button onClick={()=>{
-                if(!saveEmail||!restoreInput){setSaveErr("Please fill in both fields.");return;}
-                try{
-                  const padded = restoreInput.toLowerCase() + "=".repeat((4-restoreInput.length%4)%4);
-                  const decoded = atob(padded);
-                  const parts = decoded.split(":");
-                  if(parts[0]===saveEmail.toLowerCase()&&parts[1]===slug){
-                    const key=`stamps_${slug}_${saveEmail.toLowerCase()}`;
-                    localStorage.setItem(key,parts[2]||"0");
-                    setEmail(saveEmail); setStamps(parseInt(parts[2])||0);
-                    setSaveErr(""); setStep("stamped");
-                  } else setSaveErr("Code doesn't match this email. Please check and try again.");
-                }catch(e){setSaveErr("Invalid restore code. Please check and try again.");}
-              }} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Restore stamps →</button>
+              <button onClick={()=>{ if(!saveEmail||!restoreInput){setSaveErr("Please fill in both fields.");return;} try{ const padded=restoreInput.toLowerCase()+"=".repeat((4-restoreInput.length%4)%4); const decoded=atob(padded); const parts=decoded.split(":"); if(parts[0]===saveEmail.toLowerCase()&&parts[1]===slug){const key=`stamps_${slug}_${saveEmail.toLowerCase()}`;localStorage.setItem(key,parts[2]||"0");setEmail(saveEmail);setStamps(parseInt(parts[2])||0);setSaveErr("");setStep("stamped");}else setSaveErr("Code doesn't match. Please check and try again."); }catch(e){setSaveErr("Invalid restore code. Please check and try again.");} }} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Restore stamps →</button>
               <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
             </div>
           </div>
         )}
 
-        {/* STEP: Tier unlocked */}
         {step==="tier" && unlockedTier && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>
-              {unlockedTier.level==="Bronze"?"🥉":unlockedTier.level==="Silver"?"🥈":"🥇"}
-            </div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>
-              {unlockedTier.repeat ? "Gold again!" : `${unlockedTier.level} achieved!`}
-            </div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>
-              {unlockedTier.repeat
-                ? "You completed another full cycle — Gold status maintained!"
-                : `You've reached ${unlockedTier.stamps} stamps`}
-            </div>
-
-            {/* Reward */}
+            <div style={{ fontSize:48,marginBottom:12 }}>{unlockedTier.level==="Bronze"?"🥉":unlockedTier.level==="Silver"?"🥈":"🥇"}</div>
+            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{unlockedTier.repeat?"Gold again!":`${unlockedTier.level} achieved!`}</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>{unlockedTier.repeat?"You completed another full cycle!":`You've reached ${unlockedTier.stamps} stamps`}</div>
             <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"16px",marginBottom:unlockedTier.redemptionCode?16:20 }}>
               <div style={{ fontSize:12,color:C.t4,marginBottom:4 }}>YOUR REWARD</div>
               <div style={{ fontSize:18,fontWeight:800,color:C.vi }}>{unlockedTier.reward}</div>
               {!unlockedTier.redemptionCode && <div style={{ fontSize:12,color:C.t4,marginTop:6 }}>Show this screen to redeem</div>}
             </div>
-
-            {/* Redemption code for Gold */}
             {unlockedTier.redemptionCode && (
               <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"16px",marginBottom:20 }}>
                 <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
@@ -2523,38 +1490,19 @@ function CheckInPage() {
                 <div style={{ fontSize:11,color:C.t4,marginTop:8 }}>Show this to the cashier · Your stamp card has reset</div>
               </div>
             )}
-
-            {/* Gold permanent status badge */}
-            {unlockedTier.level==="Gold" && (
-              <div style={{ background:C.vi+"18",border:`1px solid ${C.vi}30`,borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:8,justifyContent:"center" }}>
-                <span style={{ fontSize:16 }}>🥇</span>
-                <span style={{ fontSize:13,fontWeight:700,color:C.vi }}>Permanent Gold Member</span>
-              </div>
-            )}
-
-            <div style={{ fontSize:12,color:C.t4,marginBottom:16 }}>
-              {unlockedTier.level==="Gold"
-                ? "Your stamp card resets — keep visiting to earn Gold rewards every cycle!"
-                : "Keep earning stamps to reach the next tier!"}
-            </div>
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>
-              {unlockedTier.level==="Gold" ? "Start new cycle →" : "Continue earning →"}
-            </button>
+            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>{unlockedTier.level==="Gold"?"Start new cycle →":"Continue earning →"}</button>
           </div>
         )}
 
-        {/* STEP: Redeem reward */}
         {step==="redeem" && (
           <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center",boxShadow:`0 0 40px rgba(34,197,94,.2)` }}>
             <div style={{ fontSize:48,marginBottom:12 }}>🏆</div>
             <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>You earned it!</div>
             <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>Show this code to the cashier to claim your {reward}</div>
-
             <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"20px 16px",marginBottom:24 }}>
               <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
               <div style={{ fontSize:28,fontWeight:900,color:C.ok,letterSpacing:".1em",fontFamily:"DM Mono,monospace" }}>{redeemCode}</div>
             </div>
-
             <div style={{ fontSize:12,color:C.t4,marginBottom:20 }}>Your stamp card has been reset. Start collecting again!</div>
             <button onClick={()=>setStep("enter")} style={{ ...btnP(C.ok,true),fontSize:14,padding:"12px" }}>Start collecting again</button>
           </div>
@@ -2564,166 +1512,137 @@ function CheckInPage() {
   );
 }
 
-// ── Sticker Order Page ─────────────────────────────────────────────────────────
 function StickerOrderPage() {
   const { user } = useAuth(); const { nav } = useNav();
   const w=useW(); const mob=w<640;
-  const [pack, setPack] = useState("starter");
-  const [bizName, setBizName] = useState(user?.name||"");
-  const [addr1, setAddr1] = useState("");
-  const [addr2, setAddr2] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
-  const [style, setStyle] = useState("gold-black");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const PACKS = [
-    { id:"standard", name:"Sticker Pack", qty:"10 co-branded stickers", price:29.99, priceId:"price_1TfQtIId1xxQI6ctWeURjbPJ" },
-  ];
-  const STYLES = [
-    { id:"gold-black", name:"Gold on Black", desc:"Gold QR on black background — premium look" },
-    { id:"black-gold", name:"Black on Gold", desc:"Black QR on gold background — high contrast" },
-    { id:"white-black", name:"White on Black", desc:"Clean minimal white on black" },
-  ];
-
+  const [bizName,setBizName]=useState(user?.name||"");
+  const [addr1,setAddr1]=useState(""); const [addr2,setAddr2]=useState("");
+  const [city,setCity]=useState(""); const [state,setState]=useState(""); const [zip,setZip]=useState("");
+  const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
+  const si={...inp,background:C.bg3,border:`1px solid ${C.b2}`};
   const handleOrder = async e => {
     e.preventDefault();
     if (!bizName||!addr1||!city||!state||!zip) { setErr("Please fill in all required fields."); return; }
     if (!user) { nav("signup"); return; }
     setLoading(true); setErr("");
-
     try {
-      const selectedPack = PACKS[0];
-      const res = await fetch("/.netlify/functions/create-checkout", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          priceId: selectedPack.priceId,
-          email: user.email,
-          mode: "payment",
-          metadata: {
-            type:"sticker_order",
-            bizName,
-            address:`${addr1}${addr2?", "+addr2:""}, ${city}, ${state} ${zip}`,
-          }
-        }),
-      });
-      const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-      else { setErr("Something went wrong. Please try again or email info@xhibitur.com"); }
-    } catch(x) {
-      setErr("Something went wrong. Please try again or email info@xhibitur.com");
-    }
+      const res=await fetch("/.netlify/functions/create-checkout",{ method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ priceId:"price_1TfQtIId1xxQI6ctWeURjbPJ",email:user.email,mode:"payment",metadata:{type:"sticker_order",bizName,address:`${addr1}${addr2?", "+addr2:""}, ${city}, ${state} ${zip}`} }) });
+      const data=await res.json();
+      if (data.url){window.location.href=data.url;}else setErr("Something went wrong. Please try again or email info@xhibitur.com");
+    }catch(x){setErr("Something went wrong. Please try again or email info@xhibitur.com");}
     setLoading(false);
   };
-
-  const si = { ...inp, background:C.bg3, border:`1px solid ${C.b2}` };
-
   return (
     <DashShell>
       <PgHead title="Order Sticker Kit" sub="Co-branded QR stickers delivered to your door."/>
-
       <div style={{ maxWidth:mob?undefined:600 }}>
-
-        {/* Why stickers */}
         <div style={{ ...card(),padding:mob?16:20,marginBottom:16,border:`1px solid ${C.vi}25`,background:C.viDim }}>
           <div style={{ fontWeight:700,fontSize:14,color:C.t1,marginBottom:8 }}>📦 What you get</div>
-          <div style={{ fontSize:13,color:C.t3,lineHeight:1.7 }}>
-            Professional co-branded QR stickers with your business name and the Xhibitur Rewards logo. Weatherproof vinyl — perfect for counters, windows, menus and tables. Each sticker encodes your unique loyalty QR code.
-          </div>
+          <div style={{ fontSize:13,color:C.t3,lineHeight:1.7 }}>Professional co-branded QR stickers with your business name and the Xhibitur Rewards logo. Weatherproof vinyl — perfect for counters, windows, menus and tables.</div>
         </div>
-
         <form onSubmit={handleOrder} style={{ display:"flex",flexDirection:"column",gap:16 }}>
-
-          {/* Single pack display */}
           <div style={{ ...card(true),padding:mob?18:22,border:`2px solid ${C.vi}`,background:C.viDim,borderRadius:14 }}>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10 }}>
-              <div>
-                <div style={{ fontSize:16,fontWeight:700,color:C.t1,marginBottom:4 }}>🏷 10 Co-Branded QR Stickers</div>
-                <div style={{ fontSize:13,color:C.t3,lineHeight:1.6 }}>Weatherproof vinyl · Gold on Black · Your business name + QR code · Powered by Xhibitur Rewards</div>
-              </div>
-              <div style={{ textAlign:"right",flexShrink:0 }}>
-                <div style={{ fontSize:28,fontWeight:900,color:C.vi,letterSpacing:"-.04em" }}>$29.99</div>
-                <div style={{ fontSize:11,color:C.t4 }}>one-time · free shipping</div>
-              </div>
+              <div><div style={{ fontSize:16,fontWeight:700,color:C.t1,marginBottom:4 }}>🏷 10 Co-Branded QR Stickers</div><div style={{ fontSize:13,color:C.t3,lineHeight:1.6 }}>Weatherproof vinyl · Gold on Black · Your business name + QR code</div></div>
+              <div style={{ textAlign:"right",flexShrink:0 }}><div style={{ fontSize:28,fontWeight:900,color:C.vi,letterSpacing:"-.04em" }}>$29.99</div><div style={{ fontSize:11,color:C.t4 }}>one-time · free shipping</div></div>
             </div>
           </div>
-
-          {/* Business details */}
-          <div>
-            <label style={lbl}>Business name (appears on sticker)</label>
-            <input value={bizName} onChange={e=>setBizName(e.target.value)} placeholder="Harlem Cafe" style={si} required
-              onFocus={e=>e.target.style.borderColor=C.vi}
-              onBlur={e=>e.target.style.borderColor=C.b2}/>
-          </div>
-
-          {/* Shipping address */}
+          <div><label style={lbl}>Business name (appears on sticker)</label><input value={bizName} onChange={e=>setBizName(e.target.value)} placeholder="Harlem Cafe" style={si} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
           <div>
             <label style={lbl}>Shipping address</label>
             <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-              <input value={addr1} onChange={e=>setAddr1(e.target.value)} placeholder="Street address" style={si} required
-                onFocus={e=>e.target.style.borderColor=C.vi}
-                onBlur={e=>e.target.style.borderColor=C.b2}/>
-              <input value={addr2} onChange={e=>setAddr2(e.target.value)} placeholder="Apt, suite, unit (optional)" style={si}
-                onFocus={e=>e.target.style.borderColor=C.vi}
-                onBlur={e=>e.target.style.borderColor=C.b2}/>
+              <input value={addr1} onChange={e=>setAddr1(e.target.value)} placeholder="Street address" style={si} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              <input value={addr2} onChange={e=>setAddr2(e.target.value)} placeholder="Apt, suite, unit (optional)" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
               <div style={{ display:"grid",gridTemplateColumns:"1fr 80px 100px",gap:8 }}>
-                <input value={city} onChange={e=>setCity(e.target.value)} placeholder="City" style={si} required
-                  onFocus={e=>e.target.style.borderColor=C.vi}
-                  onBlur={e=>e.target.style.borderColor=C.b2}/>
-                <input value={state} onChange={e=>setState(e.target.value)} placeholder="NY" maxLength={2} style={si} required
-                  onFocus={e=>e.target.style.borderColor=C.vi}
-                  onBlur={e=>e.target.style.borderColor=C.b2}/>
-                <input value={zip} onChange={e=>setZip(e.target.value)} placeholder="10001" maxLength={5} style={si} required
-                  onFocus={e=>e.target.style.borderColor=C.vi}
-                  onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={city} onChange={e=>setCity(e.target.value)} placeholder="City" style={si} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={state} onChange={e=>setState(e.target.value)} placeholder="NY" maxLength={2} style={si} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                <input value={zip} onChange={e=>setZip(e.target.value)} placeholder="10001" maxLength={5} style={si} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
               </div>
             </div>
           </div>
-
           {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
-
-          {/* Order summary */}
           <div style={{ ...card(),padding:16,border:`1px solid ${C.b2}` }}>
-            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
-              <span style={{ fontSize:13,color:C.t4 }}>10 Co-Branded QR Stickers</span>
-              <span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>$29.99</span>
-            </div>
-            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
-              <span style={{ fontSize:13,color:C.t4 }}>Shipping</span>
-              <span style={{ fontSize:13,color:C.ok,fontWeight:600 }}>Free</span>
-            </div>
-            <div style={{ borderTop:`1px solid ${C.b2}`,paddingTop:8,display:"flex",justifyContent:"space-between" }}>
-              <span style={{ fontSize:14,fontWeight:700,color:C.t1 }}>Total</span>
-              <span style={{ fontSize:16,fontWeight:900,color:C.vi }}>$29.99</span>
-            </div>
+            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}><span style={{ fontSize:13,color:C.t4 }}>10 Co-Branded QR Stickers</span><span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>$29.99</span></div>
+            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}><span style={{ fontSize:13,color:C.t4 }}>Shipping</span><span style={{ fontSize:13,color:C.ok,fontWeight:600 }}>Free</span></div>
+            <div style={{ borderTop:`1px solid ${C.b2}`,paddingTop:8,display:"flex",justifyContent:"space-between" }}><span style={{ fontSize:14,fontWeight:700,color:C.t1 }}>Total</span><span style={{ fontSize:16,fontWeight:900,color:C.vi }}>$29.99</span></div>
           </div>
-
-          <button type="submit" disabled={loading} style={{ ...btnP(C.vi,true),fontSize:15,padding:"14px",boxShadow:`0 0 30px ${C.viGlo}`,opacity:loading?.7:1 }}>
-            {loading?"Redirecting to checkout…":"Order 10 stickers — $29.99 →"}
-          </button>
-
-          <p style={{ textAlign:"center",fontSize:12,color:C.t4,margin:0 }}>
-            Free shipping · Delivered in 7-10 business days · Weatherproof vinyl
-          </p>
+          <button type="submit" disabled={loading} style={{ ...btnP(C.vi,true),fontSize:15,padding:"14px",boxShadow:`0 0 30px ${C.viGlo}`,opacity:loading?.7:1 }}>{loading?"Redirecting to checkout…":"Order 10 stickers — $29.99 →"}</button>
+          <p style={{ textAlign:"center",fontSize:12,color:C.t4,margin:0 }}>Free shipping · Delivered in 7-10 business days · Weatherproof vinyl</p>
         </form>
       </div>
     </DashShell>
   );
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
-const PROTECTED = ["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast"];
+function BroadcastPage() {
+  const { user } = useAuth();
+  const w=useW(); const mob=w<640;
+  const [subject,setSubject]=useState("");
+  const [message,setMessage]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [result,setResult]=useState(null);
+  const [err,setErr]=useState("");
+  const bizSlug=user?.name?.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"";
+  const bizName=user?.name||"Your Business";
+  const si={...inp,background:C.bg3,border:`1px solid ${C.b2}`};
+  const send=async()=>{
+    if(!subject.trim()){setErr("Please enter a subject line.");return;}
+    if(!message.trim()){setErr("Please enter a message.");return;}
+    if(message.trim().length<20){setErr("Message is too short. Write at least a sentence.");return;}
+    setBusy(true);setErr("");setResult(null);
+    try{
+      const res=await fetch("/.netlify/functions/send-broadcast",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessSlug:bizSlug,businessName:bizName,subject:subject.trim(),message:message.trim(),userEmail:user?.email})});
+      const data=await res.json();
+      if(data.success){setResult(data);setSubject("");setMessage("");}else setErr(data.error||"Something went wrong. Please try again.");
+    }catch(e){setErr("Something went wrong. Please try again.");}
+    setBusy(false);
+  };
+  return (
+    <DashShell>
+      <PgHead title="Message Members" sub="Send an email broadcast to all your loyalty members."/>
+      <div style={{ maxWidth:mob?undefined:580 }}>
+        <div style={{ ...card(),padding:mob?14:18,marginBottom:16,border:`1px solid ${C.vi}25`,background:C.viDim }}>
+          <div style={{ fontWeight:700,fontSize:14,color:C.t1,marginBottom:6 }}>📣 How this works</div>
+          <div style={{ fontSize:13,color:C.t3,lineHeight:1.7 }}>Your message goes to every customer who checked in and saved their email at your loyalty page. Each email is personalized with their current stamp count.</div>
+        </div>
+        {result && (
+          <div style={{ ...card(),padding:mob?16:22,marginBottom:16,border:`1px solid ${C.ok}30`,background:C.ok+"08",textAlign:"center" }}>
+            <div style={{ fontSize:36,marginBottom:10 }}>✅</div>
+            <div style={{ fontSize:17,fontWeight:800,color:C.t1,marginBottom:6 }}>Broadcast sent!</div>
+            <div style={{ fontSize:14,color:C.t4,marginBottom:4 }}>Delivered to <strong style={{ color:C.ok }}>{result.sent}</strong> of {result.total} members.</div>
+            <button onClick={()=>setResult(null)} style={{ ...btnG(),fontSize:13,padding:"9px 20px",marginTop:16 }}>Send another</button>
+          </div>
+        )}
+        {!result && (
+          <div style={{ ...card(true),padding:mob?18:24,border:`1px solid ${C.b2}` }}>
+            <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+              <div style={{ background:C.bg4,border:`1px solid ${C.b2}`,borderRadius:8,padding:"10px 14px" }}>
+                <div style={{ fontSize:11,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".07em",marginBottom:4 }}>From</div>
+                <div style={{ fontSize:13,color:C.t3 }}>{bizName} via Xhibitur Rewards &lt;notifications@xhibitur.com&gt;</div>
+              </div>
+              <div><label style={lbl}>Subject line</label><input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="e.g. Special offer just for our loyal customers 🎉" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+              <div>
+                <label style={lbl}>Message</label>
+                <textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="e.g. Hey! We're running a buy-one-get-one on all lattes this Friday only." rows={5} style={{ ...si,resize:"vertical",minHeight:120,lineHeight:1.6 }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              </div>
+              {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
+              <button onClick={send} disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Sending...":"Send to all members →"}</button>
+              <p style={{ textAlign:"center",fontSize:12,color:C.t4,margin:0 }}>All emails include an unsubscribe link · CAN-SPAM compliant</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashShell>
+  );
+}
+
+const PROTECTED=["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast"];
 
 function AppCore() {
   const { user,loading } = useAuth(); const { page,nav } = useNav();
-  const [programs,setPrograms] = useState(DEMO_P);
+  const [programs,setPrograms] = useState([]);
 
-  useEffect(() => {
+  useEffect(()=>{
     if (loading) return;
     if (!user && PROTECTED.includes(page)) nav("login");
     if (user && (page==="login"||page==="signup")) nav("dashboard");
@@ -2738,13 +1657,8 @@ function AppCore() {
     </div>
   );
 
-  // Handle checkin routes: #/checkin/slug
   if (page.startsWith("checkin")) return <CheckInPage/>;
-
-  // Handle password reset redirect from Supabase email
-  if (window.location.hash.includes("access_token") && window.location.hash.includes("type=recovery")) {
-    return <ResetPassword/>;
-  }
+  if (window.location.hash.includes("access_token")&&window.location.hash.includes("type=recovery")) return <ResetPassword/>;
 
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
@@ -2752,10 +1666,10 @@ function AppCore() {
     "reset-password":<ResetPassword/>,
     dashboard:<DashHome/>,
     "dashboard/qr":<QRPage/>,
-    "dashboard/rewards":<RewardsPage programs={programs} setPrograms={setPrograms}/>,
+    "dashboard/rewards":<RewardsPage/>,
     "dashboard/analytics":<AnalyticsPage/>,
     "dashboard/account":<AccountPage/>,
-   "dashboard/stickers":<StickerOrderPage/>,
+    "dashboard/stickers":<StickerOrderPage/>,
     "dashboard/broadcast":<BroadcastPage/>,
   };
   return (
@@ -2766,20 +1680,16 @@ function AppCore() {
 }
 
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(err) { return { error: err }; }
+  constructor(props) { super(props); this.state = { error:null }; }
+  static getDerivedStateFromError(err) { return { error:err }; }
   render() {
     if (this.state.error) return (
       <div style={{ minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}>
         <div style={{ maxWidth:480,textAlign:"center" }}>
           <div style={{ fontSize:40,marginBottom:16 }}>⚠️</div>
           <div style={{ fontSize:20,fontWeight:700,color:"#fff",marginBottom:12 }}>Something went wrong</div>
-          <div style={{ fontSize:13,color:"#666",marginBottom:24,background:"#111",padding:"12px 16px",borderRadius:10,textAlign:"left",fontFamily:"monospace",wordBreak:"break-all" }}>
-            {this.state.error?.message || "Unknown error"}
-          </div>
-          <button onClick={()=>{ this.setState({error:null}); window.location.hash="#/dashboard/qr"; }} style={{ background:"#d4a017",color:"#000",border:"none",borderRadius:10,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer" }}>
-            Go back to dashboard
-          </button>
+          <div style={{ fontSize:13,color:"#666",marginBottom:24,background:"#111",padding:"12px 16px",borderRadius:10,textAlign:"left",fontFamily:"monospace",wordBreak:"break-all" }}>{this.state.error?.message||"Unknown error"}</div>
+          <button onClick={()=>{ this.setState({error:null}); window.location.hash="#/dashboard"; }} style={{ background:"#d4a017",color:"#000",border:"none",borderRadius:10,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer" }}>Go back to dashboard</button>
         </div>
       </div>
     );
