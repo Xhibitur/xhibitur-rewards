@@ -1499,8 +1499,10 @@ function QRPage() {
           :codes.map(qr=>(
             <QRCard key={qr.id} qr={qr} mob={mob}
               onEdit={q=>{setEd(q);setModal(true);}}
-              onDelete={remove}
-              </div>
+              onDelete={remove}/>
+          ))
+        }
+      </div>
       {modal && <QRModal init={ed} onSave={save} programs={programs} onClose={()=>{setModal(false);setEd(null);}}/>}
     </DashShell>
   );
