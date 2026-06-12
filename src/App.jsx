@@ -538,7 +538,8 @@ function ResetPassword() {
   const { nav } = useNav();
   const [pw,setPw]=useState(""); const [pw2,setPw2]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [done,setDone]=useState(false);
   // Get token from URL hash — Supabase puts it after #access_token=
-  const token = new URLSearchParams(window.location.hash.split("?")[1]||window.location.search).get("access_token") || "";
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?reset-password\??/,"").replace(/^#/,""));
+const token = hashParams.get("access_token") || new URLSearchParams(window.location.search).get("access_token") || "";
   const go = async e => {
     e.preventDefault(); setErr("");
     if (pw !== pw2) { setErr("Passwords don't match."); return; }
