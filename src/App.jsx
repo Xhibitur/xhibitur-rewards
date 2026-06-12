@@ -2033,6 +2033,7 @@ function AnalyticsPage() {
           ))}
         </div>
       </div>
+    </div>
       <div style={{ ...card(),padding:mob?14:18,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap" }}>
         <div><div style={{ fontWeight:600,fontSize:14,color:C.t1,marginBottom:3 }}>Export analytics data</div><div style={{ fontSize:13,color:C.t4 }}>Full scan history and redemption logs as CSV.</div></div>
         <button style={{ ...btnP(),padding:"10px 18px",fontSize:14,width:mob?"100%":undefined }}>Download CSV</button>
