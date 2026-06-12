@@ -608,11 +608,8 @@ function Signup() {
   return (
     <AuthShell title="Start your free trial" sub="14 days free. No credit card. $49.99/month after.">
       <form onSubmit={go} style={{ display:"flex",flexDirection:"column",gap:14 }}>
-        {[{ lb:"Business name",val:nm,set:setNm,type:"text",ph:"Acme Coffee Co." },{ lb:"Email",val:em,set:setEm,type:"email",ph:"you@business.com" },{ lb:"Password",val:pw,set:setPw,type:"password",ph:"8+ characters" }].map(f=>(
+     {[{ lb:"Business name",val:nm,set:setNm,type:"text",ph:"Acme Coffee Co." },{ lb:"Email",val:em,set:setEm,type:"email",ph:"you@business.com" },{ lb:"Password",val:pw,set:setPw,type:"password",ph:"8+ characters" }].map(f=>(
           <div key={f.lb}><label style={lbl}>{f.lb}</label>{f.type==="password"
-  ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
-  : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
-}</div>
   ? <PwInput value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp}/>
   : <input type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={dInp} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
 }</div>
