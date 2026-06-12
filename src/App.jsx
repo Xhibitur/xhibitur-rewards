@@ -1877,7 +1877,92 @@ exports.handler = async (event) => {
     body: JSON.stringify({ success: true, sent, total: members.length, errors }),
   };
 };
-// ── Analytics Page ────────────────────────────────────────────────────────────
+// ── Broadcast Page ────────────────────────────────────────────────────────────
+function BroadcastPage() {
+  const { user } = useAuth();
+  const { nav } = useNav();
+  const w = useW(); const mob = w < 640;
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState("");
+
+  const bizSlug = user?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "";
+  const bizName = user?.name || "Your Business";
+  const si = { ...inp, background: C.bg3, border: `1px solid ${C.b2}` };
+
+  const send = async () => {
+    if (!subject.trim()) { setErr("Please enter a subject line."); return; }
+    if (!message.trim()) { setErr("Please enter a message."); return; }
+    if (message.trim().length < 20) { setErr("Message is too short. Write at least a sentence."); return; }
+    setBusy(true); setErr(""); setResult(null);
+    try {
+      const res = await fetch("/.netlify/functions/send-broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessSlug: bizSlug, businessName: bizName, subject: subject.trim(), message: message.trim(), userEmail: user?.email }),
+      });
+      const data = await res.json();
+      if (data.success) { setResult(data); setSubject(""); setMessage(""); }
+      else { setErr(data.error || "Something went wrong. Please try again."); }
+    } catch (e) { setErr("Something went wrong. Please try again."); }
+    setBusy(false);
+  };
+
+  return (
+    <DashShell>
+      <PgHead title="Message Members" sub="Send an email broadcast to all your loyalty members."/>
+      <div style={{ maxWidth: mob ? undefined : 580 }}>
+        <div style={{ ...card(), padding: mob ? 14 : 18, marginBottom: 16, border: `1px solid ${C.vi}25`, background: C.viDim }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: C.t1, marginBottom: 6 }}>📣 How this works</div>
+          <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.7 }}>Your message goes to every customer who checked in and saved their email at your loyalty page. Each email is personalized with their current stamp count and shows how close they are to their reward.</div>
+        </div>
+        {result && (
+          <div style={{ ...card(), padding: mob ? 16 : 22, marginBottom: 16, border: `1px solid ${C.ok}30`, background: C.ok+"08", textAlign: "center" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.t1, marginBottom: 6 }}>Broadcast sent!</div>
+            <div style={{ fontSize: 14, color: C.t4, marginBottom: 4 }}>Delivered to <strong style={{ color: C.ok }}>{result.sent}</strong> of {result.total} members.</div>
+            {result.errors?.length > 0 && <div style={{ fontSize: 12, color: C.warn, marginTop: 6 }}>{result.errors.length} failed to deliver.</div>}
+            <button onClick={() => setResult(null)} style={{ ...btnG(), fontSize: 13, padding: "9px 20px", marginTop: 16 }}>Send another</button>
+          </div>
+        )}
+        {!result && (
+          <div style={{ ...card(true), padding: mob ? 18 : 24, border: `1px solid ${C.b2}` }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: C.bg4, border: `1px solid ${C.b2}`, borderRadius: 8, padding: "10px 14px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.t4, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 4 }}>From</div>
+                <div style={{ fontSize: 13, color: C.t3 }}>{bizName} via Xhibitur Rewards &lt;notifications@xhibitur.com&gt;</div>
+              </div>
+              <div>
+                <label style={lbl}>Subject line</label>
+                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Special offer just for our loyal customers 🎉" style={si} onFocus={e => e.target.style.borderColor=C.vi} onBlur={e => e.target.style.borderColor=C.b2}/>
+              </div>
+              <div>
+                <label style={lbl}>Message</label>
+                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="e.g. Hey! We're running a buy-one-get-one on all lattes this Friday only. Come in and show this email at the counter." rows={5} style={{ ...si, resize: "vertical", minHeight: 120, lineHeight: 1.6 }} onFocus={e => e.target.style.borderColor=C.vi} onBlur={e => e.target.style.borderColor=C.b2}/>
+                <div style={{ fontSize: 11, color: C.t4, marginTop: 5 }}>Each email will automatically include the customer's stamp progress below your message.</div>
+              </div>
+              <div style={{ background: C.bg4, border: `1px solid ${C.b2}`, borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.t4, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 10 }}>Auto-added to every email</div>
+                <div style={{ background: C.bg3, border: `1px solid ${C.b2}`, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: C.t4, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".07em" }}>Your loyalty progress</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: C.vi }}>7 / 10</div>
+                  <div style={{ fontSize: 12, color: C.t3, marginTop: 4 }}>Only <strong style={{ color: C.vi }}>3 more visits</strong> until your <strong style={{ color: C.vi }}>free coffee</strong></div>
+                </div>
+              </div>
+              {err && <div style={{ background: C.err+"15", border: `1px solid ${C.err}30`, borderRadius: 8, padding: "10px 13px", color: C.err, fontSize: 13 }}>{err}</div>}
+              <button onClick={send} disabled={busy} style={{ ...btnP(C.vi, true), fontSize: 15, padding: "13px", opacity: busy ? .7 : 1 }}>{busy ? "Sending..." : "Send to all members →"}</button>
+              <p style={{ textAlign: "center", fontSize: 12, color: C.t4, margin: 0 }}>All emails include an unsubscribe link · CAN-SPAM compliant</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashShell>
+  );
+}
+
+// ── Analytics Page ──
 const HIST=[284,310,291,405,380,420,512,488,390,445,510,1284];
 const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
