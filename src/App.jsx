@@ -1137,11 +1137,11 @@ function RwdModal({ init,onSave,onClose }) {
   );
 }
 
-function RewardsPage() {
+function RewardsPage({ programs, setPrograms }) {
   const { user } = useAuth();
   const { nav } = useNav();
   const w=useW(); const mob=w<640;
-  const [progs,setProgs] = useState([]);
+  const progs = programs || [];
   const [loading,setLoading] = useState(true);
   const [modal,setModal] = useState(false);
   const [ed,setEd] = useState(null);
@@ -1149,17 +1149,17 @@ function RewardsPage() {
   useEffect(()=>{
     if (!user?.email) return;
     fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"load", userEmail:user.email }) })
-      .then(r=>r.json()).then(d=>{ if(d.programs) setProgs(d.programs); }).finally(()=>setLoading(false));
+      .then(r=>r.json()).then(d=>{ if(d.programs) setPrograms(d.programs); }).finally(()=>setLoading(false));
   },[user?.email]);
 
   const save = async p => {
     const updated = ed ? progs.map(x=>x.id===p.id?p:x) : [...progs,p];
-    setProgs(updated); setModal(false); setEd(null);
+    setPrograms(updated); setModal(false); setEd(null);
     await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"save", userEmail:user.email, program:p }) });
   };
 
   const remove = async id => {
-    setProgs(progs.filter(x=>x.id!==id));
+    setPrograms(progs.filter(x=>x.id!==id));
     await fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"delete", userEmail:user.email, programId:id }) });
   };
 
@@ -1643,6 +1643,12 @@ function AppCore() {
   const [programs,setPrograms] = useState([]);
 
   useEffect(()=>{
+    if (!user?.email) return;
+    fetch("/.netlify/functions/program-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"load", userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(d.programs) setPrograms(d.programs); });
+  },[user?.email]);
+
+  useEffect(()=>{
     if (loading) return;
     if (!user && PROTECTED.includes(page)) nav("login");
     if (user && (page==="login"||page==="signup")) nav("dashboard");
@@ -1666,7 +1672,7 @@ function AppCore() {
     "reset-password":<ResetPassword/>,
     dashboard:<DashHome/>,
     "dashboard/qr":<QRPage/>,
-    "dashboard/rewards":<RewardsPage/>,
+    "dashboard/rewards":<RewardsPage programs={programs} setPrograms={setPrograms}/>,
     "dashboard/analytics":<AnalyticsPage/>,
     "dashboard/account":<AccountPage/>,
     "dashboard/stickers":<StickerOrderPage/>,
