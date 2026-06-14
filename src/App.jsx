@@ -555,7 +555,7 @@ const FEATS = [
 const ALL_FEATURES = [
   "Unlimited Smart QR codes","Unlimited Rewards programs","Unlimited monthly scans",
   "Full analytics dashboard","Win-back automation","Mobile-first dashboard",
-  "All 10 smart rule types","Custom domain support","CSV data export",
+  "All 10 smart rule types","Email broadcast messaging","CSV data export",
   "Auto-pilot templates","Priority email support","Instant print-ready QR sign",
 ];
 
@@ -1216,17 +1216,31 @@ function RewardsPage({ programs, setPrograms }) {
 }
 
 function AnalyticsPage() {
+  const { user } = useAuth();
   const w=useW(); const mob=w<640;
+  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0 });
+  const [loading,setLoading] = useState(true);
+
+  useEffect(()=>{
+    if (!user?.email) return;
+    fetch("/.netlify/functions/analytics-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(!d.error) setStats(d); }).finally(()=>setLoading(false));
+  },[user?.email]);
+
   return (
     <DashShell>
       <PgHead title="Analytics" sub="Scans, redemptions and member growth."/>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="◈" label="Total Scans" value="0" accent={C.vi}/>
-        <Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
-        <Stat icon="👥" label="Members" value="0" accent={C.cy}/>
+        <Stat icon="◈" label="Total Scans" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
+        <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
+        <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.cy}/>
       </div>
       <div style={{ ...card(),padding:mob?16:20,textAlign:"center" }}>
-        <div style={{ fontSize:14,color:C.t4,padding:"32px 0" }}>Analytics will populate as customers scan your QR codes and check in.</div>
+        <div style={{ fontSize:14,color:C.t4,padding:"32px 0" }}>
+          {!loading && stats.members===0 && stats.redemptions===0
+            ? "Analytics will populate as customers scan your QR codes and check in."
+            : "Members and redemptions update automatically as customers check in. QR scan-volume tracking is coming soon."}
+        </div>
       </div>
     </DashShell>
   );
@@ -1314,6 +1328,10 @@ function CheckInPage() {
     if (refCode) { try { const refEmail=atob(refCode); sessionStorage.setItem("pending_ref",JSON.stringify({slug,refEmail})); } catch(e){} }
   },[slug]);
 
+  const recordRedemption = (rewardLabel) => {
+    fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email: email.toLowerCase(), reward: rewardLabel||"" }) }).catch(()=>{});
+  };
+
   const handleCheckin = async e => {
     e.preventDefault();
     if (!email) { setErr("Please enter your email."); return; }
@@ -1334,14 +1352,14 @@ function CheckInPage() {
         const newlyUnlocked=tiers.find(t=>t.stamps===newStamps);
         if (newlyUnlocked) {
           const isGold=newlyUnlocked.stamps===maxTier.stamps;
-          if (isGold) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); localStorage.setItem(`${key}_gold`,"true"); setRedeemCode(code); setStamps(0); setUnlockedTier({...newlyUnlocked,redemptionCode:code}); setStep("tier"); }
+          if (isGold) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); localStorage.setItem(`${key}_gold`,"true"); setRedeemCode(code); setStamps(0); setUnlockedTier({...newlyUnlocked,redemptionCode:code}); setStep("tier"); recordRedemption(newlyUnlocked.reward); }
           else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); if(name) localStorage.setItem(`${key}_name`,name); setStamps(newStamps); setUnlockedTier(newlyUnlocked); setStep("tier"); }
           setBusy(false); return;
         }
         const isGoldAgain=localStorage.getItem(`${key}_gold`)==="true"&&newStamps===maxTier.stamps;
-        if (isGoldAgain) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setUnlockedTier({...maxTier,redemptionCode:code,repeat:true}); setStep("tier"); setBusy(false); return; }
+        if (isGoldAgain) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setUnlockedTier({...maxTier,redemptionCode:code,repeat:true}); setStep("tier"); recordRedemption(maxTier.reward); setBusy(false); return; }
       }
-      if (!tiers&&newStamps>=goal) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setStep("redeem"); }
+      if (!tiers&&newStamps>=goal) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setStep("redeem"); recordRedemption(reward); }
       else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); setStamps(newStamps); if(name) localStorage.setItem(`${key}_name`,name); if(refEnabled){const code=btoa(email.toLowerCase());setRefLink(`${window.location.origin}${window.location.pathname}#/checkin/${slug}?ref=${code}`);} setStep(isNew?"welcome":"stamped"); }
     } catch(x) { setErr("Something went wrong. Please try again."); }
     setBusy(false);
