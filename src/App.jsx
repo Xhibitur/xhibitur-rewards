@@ -115,7 +115,9 @@ function AuthProvider({ children }) {
     if (data.error) throw new Error(data.error);
     if (data.token) localStorage.setItem("xr_token", data.token);
     if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
-    save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:data.user.plan });
+    let plan = data.user.plan;
+    try { const r = await fetch("/.netlify/functions/check-plan", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email: em.toLowerCase() }) }); const d = await r.json(); if (d.plan) plan = d.plan; } catch{}
+    save({ id:data.user.id, email:data.user.email, name:data.user.name, plan });
   };
   const signUp = async (em, pw, nm) => {
     if (!em||!pw||!nm) throw new Error("All fields required");
@@ -239,6 +241,7 @@ function BottomTabs() {
 
 function Sidebar() {
   const { user,signOut } = useAuth(); const { page,nav } = useNav();
+  const isTrial = user?.plan==="trial";
   return (
     <aside style={{ width:216,background:C.bg1,borderRight:`1px solid ${C.b1}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,minHeight:"100%" }}>
       <div style={{ padding:"0 16px 24px",cursor:"pointer" }} onClick={()=>nav("home")}><Wordmark sm/></div>
@@ -258,7 +261,7 @@ function Sidebar() {
         <div style={{ ...card(true),padding:"12px",marginBottom:12 }}>
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
             <span style={{ fontSize:10,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".07em" }}>Plan</span>
-            <Tag color={C.vi}>{PLAN.name}</Tag>
+            <Tag color={C.vi}>{isTrial?"Trial":"Pro"}</Tag>
           </div>
           <button onClick={()=>nav("pricing")} style={{ ...btnP(C.vi,true),fontSize:11,padding:"7px",minHeight:34 }}>View plan details</button>
         </div>
