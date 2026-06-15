@@ -756,6 +756,15 @@ function DashHome() {
   const hr = new Date().getHours();
   const greet = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
   const isTrial = user?.plan==="trial";
+  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0 });
+  const [loading,setLoading] = useState(true);
+
+  useEffect(()=>{
+    if (!user?.email) return;
+    fetch("/.netlify/functions/analytics-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(!d.error) setStats(d); }).finally(()=>setLoading(false));
+  },[user?.email]);
+
   return (
     <DashShell>
       <PgHead title={`${greet}, ${user?.name?.split(" ")[0]||"there"} 👋`} sub="Your Xhibitur Rewards overview."/>
@@ -769,9 +778,9 @@ function DashHome() {
         </div>
       )}
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="▦" label="QR Scans" value="0" accent={C.vi}/>
-        <Stat icon="◆" label="Redeemed" value="0" accent={C.fu}/>
-        <Stat icon="👥" label="Members" value="0" accent={C.em}/>
+        <Stat icon="▦" label="Check-In Visits" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
+        <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
+        <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.em}/>
         <Stat icon="◈" label="Growth" value="0%" accent={C.cy}/>
       </div>
       <div style={{ ...card(),padding:mob?16:20,marginBottom:14 }}>
@@ -1232,17 +1241,20 @@ function AnalyticsPage() {
 
   return (
     <DashShell>
-      <PgHead title="Analytics" sub="Scans, redemptions and member growth."/>
+      <PgHead title="Analytics" sub="Check-in visits, redemptions and member growth."/>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="◈" label="Total Scans" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
+        <Stat icon="◈" label="Check-In Visits" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
         <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
         <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.cy}/>
       </div>
       <div style={{ ...card(),padding:mob?16:20,textAlign:"center" }}>
         <div style={{ fontSize:14,color:C.t4,padding:"32px 0" }}>
-          {!loading && stats.members===0 && stats.redemptions===0
+          {!loading && stats.scans===0 && stats.members===0 && stats.redemptions===0
             ? "Analytics will populate as customers scan your QR codes and check in."
-            : "Members and redemptions update automatically as customers check in. QR scan-volume tracking is coming soon."}
+            : "Scans, members, and redemptions update automatically as customers check in."}
+        </div>
+        <div style={{ fontSize:12,color:C.t4,opacity:0.7,paddingBottom:20 }}>
+          "Check-In Visits" counts every time a customer opens your check-in page — typically by scanning your QR code.
         </div>
       </div>
     </DashShell>
@@ -1317,6 +1329,7 @@ function CheckInPage() {
 
   useEffect(()=>{
     if (!slug) return;
+    fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email:"", reward:"__scan__" }) }).catch(()=>{});
     setBizName(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
     fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`).then(r=>r.json()).then(data=>{
       if (data.name) setBizName(data.name);
