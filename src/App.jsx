@@ -197,6 +197,8 @@ function Empty({ icon, title, body, cta }) {
   );
 }
 
+const ADMIN_EMAIL = "info@xhibitur.com";
+
 const TABS = [
   { id:"dashboard",           icon:"⊞", label:"Home"      },
   { id:"dashboard/qr",        icon:"▦",  label:"QR"        },
@@ -222,10 +224,12 @@ function TopNav() {
 }
 
 function BottomTabs() {
+  const { user } = useAuth();
   const { page,nav } = useNav();
+  const tabs = [...TABS, ...(user?.email===ADMIN_EMAIL?[{ id:"dashboard/admin", icon:"🔧", label:"Admin" }]:[])];
   return (
     <nav style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:300,background:C.bg1,borderTop:`1px solid ${C.b1}`,display:"flex",paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
-      {TABS.map(t => {
+      {tabs.map(t => {
         const active = page===t.id||(t.id!=="dashboard"&&page.startsWith(t.id));
         return (
           <button key={t.id} onClick={()=>nav(t.id)} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"10px 2px 9px",background:"none",border:"none",cursor:"pointer",color:active?C.vi:C.t4,minHeight:56,position:"relative" }}>
@@ -242,11 +246,12 @@ function BottomTabs() {
 function Sidebar() {
   const { user,signOut } = useAuth(); const { page,nav } = useNav();
   const isTrial = user?.plan==="trial";
+  const tabs = [...TABS, ...(user?.email===ADMIN_EMAIL?[{ id:"dashboard/admin", icon:"🔧", label:"Admin" }]:[])];
   return (
     <aside style={{ width:216,background:C.bg1,borderRight:`1px solid ${C.b1}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,minHeight:"100%" }}>
       <div style={{ padding:"0 16px 24px",cursor:"pointer" }} onClick={()=>nav("home")}><Wordmark sm/></div>
       <nav style={{ flex:1,padding:"0 8px" }}>
-        {TABS.map(t => {
+        {tabs.map(t => {
           const active = page===t.id||(t.id!=="dashboard"&&page.startsWith(t.id));
           return (
             <div key={t.id} onClick={()=>nav(t.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,marginBottom:2,cursor:"pointer",background:active?C.viDim:"transparent",color:active?C.vi:C.t4,fontSize:13,fontWeight:active?600:400,borderLeft:`2px solid ${active?C.vi:"transparent"}`,transition:"all .12s" }}
@@ -1670,7 +1675,162 @@ function BroadcastPage() {
   );
 }
 
-const PROTECTED=["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast"];
+function AdminPage() {
+  const { user } = useAuth();
+  const [data,setData] = useState({ users:[], members:[], loading:true });
+  const [runningWinback,setRunningWinback] = useState(false);
+  const [winbackMsg,setWinbackMsg] = useState("");
+
+  useEffect(()=>{
+    if (user?.email !== ADMIN_EMAIL) return;
+    fetch("/.netlify/functions/admin-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ adminEmail: user.email }) })
+      .then(r=>r.json()).then(d=>{
+        if (!d.error) setData({ users:d.users||[], members:d.members||[], loading:false });
+        else setData(d=>({...d,loading:false}));
+      }).catch(()=>setData(d=>({...d,loading:false})));
+  },[user?.email]);
+
+  if (user?.email !== ADMIN_EMAIL) return null;
+
+  const { users, members, loading } = data;
+  const now = Date.now();
+  const proUsers = users.filter(u=>u.plan==="pro");
+  const trialUsers = users.filter(u=>u.plan==="trial");
+  const atRisk = members.filter(m=>{ const d=new Date(m.last_visit||m.created_at); return (now-d.getTime())>(45*864e5); });
+  const winbackSent = members.filter(m=>m.winback_sent_at);
+  const totalStamps = members.reduce((a,m)=>a+(m.stamps||0),0);
+  const avgStamps = members.length ? (totalStamps/members.length).toFixed(1) : "0";
+
+  const runWinback = async () => {
+    setRunningWinback(true); setWinbackMsg("");
+    try {
+      const r = await fetch("https://xhibitur-winback-scheduler.james-berry-2e2.workers.dev/run-winback");
+      const t = await r.text();
+      setWinbackMsg(r.ok ? "✅ Win-back run complete" : `❌ Error: ${t}`);
+    } catch(e) { setWinbackMsg(`❌ ${e.message}`); }
+    setRunningWinback(false);
+  };
+
+  const card2 = (accent) => ({ ...card(), padding:"16px 20px", borderLeft:`3px solid ${accent||C.vi}` });
+  const statCard = (icon,label,value,accent) => (
+    <div style={card2(accent)}>
+      <div style={{ fontSize:20,marginBottom:4 }}>{icon}</div>
+      <div style={{ fontSize:28,fontWeight:800,color:accent||C.vi,lineHeight:1 }}>{loading?"–":value}</div>
+      <div style={{ fontSize:12,color:C.t4,marginTop:4 }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <DashShell>
+      <PgHead title="🔧 Admin" sub="Xhibitur Rewards — internal dashboard"/>
+
+      {/* Stat cards */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:20 }}>
+        {statCard("👥","Total Users",users.length,C.vi)}
+        {statCard("✅","Pro (Paying)",proUsers.length,"#10b981")}
+        {statCard("⏳","On Trial",trialUsers.length,C.am)}
+        {statCard("◆","Loyalty Members",members.length,C.cy)}
+        {statCard("⚠️","At-Risk (45d+)",atRisk.length,"#ef4444")}
+        {statCard("📨","Win-backs Sent",winbackSent.length,C.fu)}
+        {statCard("🏷","Avg Stamps",avgStamps,C.vi)}
+        {statCard("💰","MRR (est)","$"+(proUsers.length*49.99).toFixed(0),"#10b981")}
+      </div>
+
+      {/* Quick links */}
+      <div style={{ ...card(),padding:"16px 20px",marginBottom:20 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>Quick Links</div>
+        <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+          {[
+            { label:"Stripe Dashboard", url:"https://dashboard.stripe.com" },
+            { label:"Supabase", url:"https://supabase.com/dashboard" },
+            { label:"Netlify", url:"https://app.netlify.com" },
+            { label:"Sticker Mule", url:"https://www.stickermule.com" },
+            { label:"Cloudflare", url:"https://dash.cloudflare.com" },
+          ].map(l=>(
+            <a key={l.label} href={l.url} target="_blank" rel="noreferrer" style={{ ...btnP(C.vi,true),fontSize:12,padding:"7px 12px",textDecoration:"none",display:"inline-flex",alignItems:"center" }}>{l.label} ↗</a>
+          ))}
+          <button onClick={runWinback} disabled={runningWinback} style={{ ...btnP(),fontSize:12,padding:"7px 12px",opacity:runningWinback?.6:1 }}>
+            {runningWinback?"Running…":"▶ Run Win-back Now"}
+          </button>
+        </div>
+        {winbackMsg && <div style={{ marginTop:10,fontSize:13,color:C.t2 }}>{winbackMsg}</div>}
+      </div>
+
+      {/* Recent signups */}
+      <div style={{ ...card(),padding:"16px 20px",marginBottom:20 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>Recent Signups</div>
+        {loading ? <div style={{ color:C.t4,fontSize:13 }}>Loading…</div> : users.length===0 ? <div style={{ color:C.t4,fontSize:13 }}>No users yet</div> : (
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {users.slice(0,20).map(u=>(
+              <div key={u.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:C.bg3,borderRadius:8,gap:12,flexWrap:"wrap" }}>
+                <div>
+                  <div style={{ fontSize:13,fontWeight:600,color:C.t1 }}>{u.name||"—"}</div>
+                  <div style={{ fontSize:12,color:C.t4 }}>{u.email}</div>
+                </div>
+                <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                  <Tag color={u.plan==="pro"?"#10b981":C.am}>{u.plan==="pro"?"Pro":"Trial"}</Tag>
+                  <span style={{ fontSize:11,color:C.t4 }}>{u.created_at?new Date(u.created_at).toLocaleDateString():""}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* At-risk members */}
+      <div style={{ ...card(),padding:"16px 20px",marginBottom:20,borderLeft:`3px solid #ef4444` }}>
+        <div style={{ fontSize:12,fontWeight:700,color:"#ef4444",textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>⚠️ At-Risk Members (45+ days inactive)</div>
+        {loading ? <div style={{ color:C.t4,fontSize:13 }}>Loading…</div> : atRisk.length===0 ? <div style={{ color:C.t4,fontSize:13 }}>No at-risk members</div> : (
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {atRisk.slice(0,30).map(m=>{
+              const days = Math.floor((now-new Date(m.last_visit||m.created_at).getTime())/864e5);
+              return (
+                <div key={m.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:C.bg3,borderRadius:8,gap:12,flexWrap:"wrap" }}>
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:600,color:C.t1 }}>{m.email||"Guest"}</div>
+                    <div style={{ fontSize:12,color:C.t4 }}>{m.business_slug}</div>
+                  </div>
+                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                    <Tag color="#ef4444">{days}d ago</Tag>
+                    <span style={{ fontSize:11,color:C.t4 }}>{m.stamps||0} stamps</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* All loyalty members */}
+      <div style={{ ...card(),padding:"16px 20px",marginBottom:20 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",marginBottom:12 }}>All Loyalty Members ({members.length})</div>
+        {loading ? <div style={{ color:C.t4,fontSize:13 }}>Loading…</div> : members.length===0 ? <div style={{ color:C.t4,fontSize:13 }}>No members yet</div> : (
+          <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+            {members.slice(0,50).map(m=>{
+              const days = Math.floor((now-new Date(m.last_visit||m.created_at).getTime())/864e5);
+              return (
+                <div key={m.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",background:C.bg3,borderRadius:8,gap:12,flexWrap:"wrap" }}>
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:500,color:C.t1 }}>{m.email||"Guest"}</div>
+                    <div style={{ fontSize:11,color:C.t4 }}>{m.business_slug}</div>
+                  </div>
+                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                    <Tag color={C.vi}>{m.stamps||0} stamps</Tag>
+                    <span style={{ fontSize:11,color:days>45?"#ef4444":C.t4 }}>{days}d ago</span>
+                    {m.winback_sent_at && <Tag color={C.fu}>wb sent</Tag>}
+                  </div>
+                </div>
+              );
+            })}
+            {members.length>50 && <div style={{ fontSize:12,color:C.t4,textAlign:"center",paddingTop:8 }}>Showing 50 of {members.length} members</div>}
+          </div>
+        )}
+      </div>
+    </DashShell>
+  );
+}
+
+const PROTECTED=["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast","dashboard/admin"];
 
 function AppCore() {
   const { user,loading } = useAuth(); const { page,nav } = useNav();
@@ -1711,6 +1871,7 @@ function AppCore() {
     "dashboard/account":<AccountPage/>,
     "dashboard/stickers":<StickerOrderPage/>,
     "dashboard/broadcast":<BroadcastPage/>,
+    "dashboard/admin": user?.email===ADMIN_EMAIL ? <AdminPage/> : <Landing/>,
   };
   return (
     <ProgramsCtx.Provider value={programs}>
