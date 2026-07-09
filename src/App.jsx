@@ -569,74 +569,325 @@ const ALL_FEATURES = [
 
 function Landing() {
   const { nav } = useNav(); const w=useW(); const mob=w<640; const tab=w<1024;
-  const px = mob?18:28;
+  const px = mob?18:tab?32:48;
   const [footerLegal,setFooterLegal] = useState(null);
+  const [stampCount,setStampCount] = useState(3);
+  const [stamping,setStamping] = useState(false);
+  const [activeRule,setActiveRule] = useState(0);
+  const [winbackPlaying,setWinbackPlaying] = useState(false);
+  const [winbackStep,setWinbackStep] = useState(0);
+
+  const doStamp = () => {
+    if (stamping||stampCount>=10) return;
+    setStamping(true);
+    setTimeout(()=>{ setStampCount(s=>s+1); setStamping(false); },600);
+  };
+
+  const rules = [
+    { icon:"⏰", trigger:"It's 11am–2pm", action:"→ Shows lunch specials menu", biz:"Restaurant", color:"#06b6d4" },
+    { icon:"🌧️", trigger:"It's raining outside", action:"→ Promotes hot drinks & soups", biz:"Cafe", color:"#3b82f6" },
+    { icon:"📅", trigger:"It's Friday night", action:"→ Shows weekend event page", biz:"Bar / Lounge", color:"#8b5cf6" },
+    { icon:"👤", trigger:"First-time scan ever", action:"→ Unlocks welcome discount", biz:"Boutique", color:"#10b981" },
+    { icon:"🏋️", trigger:"It's 6am–9am", action:"→ Shows morning class schedule", biz:"Gym", color:"#f59e0b" },
+  ];
+
+  useEffect(()=>{
+    const t = setInterval(()=>setActiveRule(r=>(r+1)%rules.length),2800);
+    return ()=>clearInterval(t);
+  },[]);
+
+  useEffect(()=>{
+    if (!winbackPlaying) return;
+    setWinbackStep(0);
+    const t1=setTimeout(()=>setWinbackStep(1),700);
+    const t2=setTimeout(()=>setWinbackStep(2),1600);
+    const t3=setTimeout(()=>setWinbackStep(3),2800);
+    return ()=>{ clearTimeout(t1);clearTimeout(t2);clearTimeout(t3); };
+  },[winbackPlaying]);
+
+  const sec = (extra={}) => ({ padding:`clamp(56px,8vw,96px) ${px}px`, ...extra });
+  const maxW = (n=1100,extra={}) => ({ maxWidth:n,margin:"0 auto",...extra });
+  const phoneFrame = (children, accent) => (
+    <div style={{ width:mob?"100%":220,maxWidth:280,flexShrink:0,background:"#0a0a0a",borderRadius:32,border:`2px solid ${(accent||C.vi)}30`,boxShadow:`0 0 60px ${(accent||C.vi)}20, 0 24px 64px rgba(0,0,0,.8)`,overflow:"hidden",position:"relative" }}>
+      <div style={{ background:"#000",padding:"8px 0 6px",display:"flex",justifyContent:"center" }}>
+        <div style={{ width:72,height:6,background:"#222",borderRadius:99 }}/>
+      </div>
+      {children}
+    </div>
+  );
+
   return (
-    <div style={{ background:C.bg,minHeight:"100vh" }}>
+    <div style={{ background:C.bg,minHeight:"100vh",overflowX:"hidden" }}>
       <TopNav/>
-      <section style={{ position:"relative",overflow:"hidden",textAlign:"center",padding:`clamp(64px,10vw,120px) ${px}px clamp(56px,8vw,88px)`,borderBottom:`1px solid ${C.b1}` }}>
-        <div style={{ position:"absolute",top:"25%",left:"50%",transform:"translateX(-50%)",width:640,height:420,background:`radial-gradient(ellipse,rgba(212,160,23,.18) 0%,transparent 68%)`,pointerEvents:"none" }}/>
-        <div style={{ position:"relative",maxWidth:700,margin:"0 auto" }}>
+
+      <section style={{ ...sec(),textAlign:"center",position:"relative",borderBottom:`1px solid ${C.b1}` }}>
+        <div style={{ position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:700,height:480,background:`radial-gradient(ellipse,rgba(212,160,23,.16) 0%,transparent 68%)`,pointerEvents:"none" }}/>
+        <div style={{ ...maxW(720),position:"relative" }}>
           <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:99,padding:"5px 14px",marginBottom:24 }}>
             <span style={{ width:6,height:6,borderRadius:"50%",background:C.ok,boxShadow:`0 0 8px ${C.ok}`,display:"inline-block" }}/>
-            <span style={{ fontSize:mob?10:11,fontWeight:600,color:C.t3,letterSpacing:".05em" }}>SMART QR + LOYALTY REWARDS PLATFORM</span>
+            <span style={{ fontSize:11,fontWeight:600,color:C.t3,letterSpacing:".06em" }}>QR LOYALTY FOR SMALL BUSINESSES</span>
           </div>
-          <h1 style={{ fontSize:`clamp(38px,8vw,72px)`,fontWeight:900,letterSpacing:"-.05em",lineHeight:1.02,marginBottom:18,color:C.t1 }}>
-            <span style={{ color:C.t1,WebkitTextFillColor:C.t1 }}>The smarter way to</span><br/>
-            <span style={{ background:`linear-gradient(135deg,${C.vi},${C.fu},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>build loyalty.</span>
+          <h1 style={{ fontSize:`clamp(36px,7.5vw,76px)`,fontWeight:900,letterSpacing:"-.05em",lineHeight:1,marginBottom:20,color:C.t1 }}>
+            Turn walk-ins into<br/>
+            <span style={{ background:`linear-gradient(135deg,${C.vi},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>regulars. Automatically.</span>
           </h1>
-          <p style={{ fontSize:`clamp(15px,2.5vw,18px)`,color:C.t3,lineHeight:1.7,maxWidth:480,margin:"0 auto 36px" }}>Dynamic QR codes that always route to the right destination — paired with rewards that bring customers back automatically.</p>
-          <div style={{ display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap" }}>
-            <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 24px":"14px 32px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start 14-day free trial</button>
-            <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:mob?15:16,padding:mob?"14px 20px":"14px 28px",width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>See how it works</button>
+          <p style={{ fontSize:`clamp(15px,2.2vw,19px)`,color:C.t3,lineHeight:1.7,maxWidth:480,margin:"0 auto 36px" }}>
+            One QR code. Customers scan, earn stamps, get rewarded — and come back when they drift. No app. No staff training. Just results.
+          </p>
+          <div style={{ display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:16 }}>
+            <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:"15px 32px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free — 14 days on us</button>
+            <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:mob?15:16,padding:"15px 24px",width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>See pricing →</button>
           </div>
-          <p style={{ marginTop:16,fontSize:12,color:C.t4 }}>14-day free trial · No credit card · $49.99/mo after · Cancel any time</p>
+          <p style={{ fontSize:12,color:C.t4 }}>No credit card · No app download · $49.99/mo after trial · Cancel any time</p>
         </div>
       </section>
-      <section style={{ padding:`clamp(48px,7vw,88px) ${px}px`,maxWidth:1400,margin:"0 auto" }}>
-        <div style={{ textAlign:"center",marginBottom:40 }}>
-          <h2 style={{ fontSize:`clamp(22px,4vw,38px)`,fontWeight:800,letterSpacing:"-.04em",marginBottom:10,color:C.t1 }}>Everything your business needs</h2>
-          <p style={{ color:C.t4,fontSize:15 }}>From QR routing to customer retention — one platform, zero complexity.</p>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}`,background:C.bg1 }}>
+        <div style={{ ...maxW(900) }}>
+          <div style={{ textAlign:"center",marginBottom:mob?36:52 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:10 }}>HOW IT WORKS</div>
+            <h2 style={{ fontSize:`clamp(24px,4vw,42px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1 }}>Set up in 5 minutes. Runs forever.</h2>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":tab?"1fr 1fr":"repeat(4,1fr)",gap:1,background:C.b1,borderRadius:16,overflow:"hidden",border:`1px solid ${C.b1}` }}>
+            {[
+              { n:"1", icon:"▦", title:"Create your QR code", desc:"Name your campaign. Your check-in page goes live instantly. No design work needed.", col:C.vi },
+              { n:"2", icon:"📋", title:"Set your reward", desc:"10 visits = free coffee. 8 stamps = 20% off. You choose the goal and the reward.", col:C.cy },
+              { n:"3", icon:"📲", title:"Customer scans & earns", desc:"They scan with their phone camera. No app. No download. Just their email and a tap.", col:C.em },
+              { n:"4", icon:"🔄", title:"Win-back runs itself", desc:"Gone 60 days? They get an automatic 'we miss you' offer. You do nothing.", col:C.am },
+            ].map(s=>(
+              <div key={s.n} style={{ background:C.bg2,padding:mob?"20px":tab?"22px":"28px 24px" }}>
+                <div style={{ width:32,height:32,borderRadius:8,background:s.col+"20",border:`1px solid ${s.col}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,marginBottom:16 }}>{s.icon}</div>
+                <div style={{ fontSize:11,fontWeight:700,color:s.col,letterSpacing:".06em",marginBottom:6 }}>STEP {s.n}</div>
+                <div style={{ fontSize:14,fontWeight:700,color:C.t1,marginBottom:8 }}>{s.title}</div>
+                <div style={{ fontSize:13,color:C.t4,lineHeight:1.65 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":tab?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${C.b1}`,borderRadius:16,overflow:"hidden" }}>
-          {FEATS.map(f=>(
-            <div key={f.title} style={{ background:C.bg2,padding:`${mob?20:26}px`,borderBottom:`1px solid ${C.b1}`,transition:"background .2s" }} onMouseEnter={e=>e.currentTarget.style.background=C.bg3} onMouseLeave={e=>e.currentTarget.style.background=C.bg2}>
-              <div style={{ width:38,height:38,borderRadius:8,background:f.col+"16",border:`1px solid ${f.col}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:f.col,marginBottom:14 }}>{f.icon}</div>
-              <div style={{ fontSize:14,fontWeight:700,color:C.t1,marginBottom:6 }}>{f.title}</div>
-              <div style={{ fontSize:13,color:C.t4,lineHeight:1.65 }}>{f.desc}</div>
+      </section>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}` }}>
+        <div style={{ ...maxW(1000),display:"flex",alignItems:"center",gap:mob?32:56,flexDirection:mob?"column":"row" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:12 }}>DEMO — TRY IT NOW</div>
+            <h2 style={{ fontSize:`clamp(22px,3.5vw,38px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:14,lineHeight:1.1 }}>Your customers earn stamps every visit</h2>
+            <p style={{ fontSize:14,color:C.t4,lineHeight:1.75,marginBottom:24 }}>Every time a customer scans your QR code, they earn a stamp. When they hit your goal, they get a reward code to show at the counter. Simple for them. Automatic for you.</p>
+            <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+              {["10 stamps = free coffee","8 stamps = 20% off","5 stamps = free side","Visit 12x = VIP status"].map(ex=>(
+                <div key={ex} style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:8,padding:"6px 12px",fontSize:12,color:C.t3 }}>{ex}</div>
+              ))}
             </div>
-          ))}
+          </div>
+          {phoneFrame(
+            <div style={{ padding:"16px 14px",background:"#000",minHeight:320 }}>
+              <div style={{ fontSize:11,fontWeight:700,color:C.vi,textAlign:"center",letterSpacing:".06em",marginBottom:4 }}>HARLEM CAFE</div>
+              <div style={{ fontSize:10,color:C.t4,textAlign:"center",marginBottom:16 }}>Collect 10 stamps · Get a free coffee</div>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:16 }}>
+                {Array.from({length:10}).map((_,i)=>(
+                  <div key={i} style={{ aspectRatio:"1",borderRadius:8,background:i<stampCount?C.vi:C.bg3,border:`1px solid ${i<stampCount?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,transition:"all .3s",boxShadow:i<stampCount?`0 0 8px ${C.viGlo}`:undefined }}>
+                    {i<stampCount?"☕":""}
+                  </div>
+                ))}
+              </div>
+              <div style={{ textAlign:"center",fontSize:11,color:C.t4,marginBottom:12 }}>{stampCount}/10 stamps collected</div>
+              {stampCount>=10
+                ? <div style={{ background:C.vi,borderRadius:10,padding:"10px",textAlign:"center" }}>
+                    <div style={{ fontSize:13,fontWeight:800,color:"#000" }}>🎉 Free coffee earned!</div>
+                    <div style={{ fontSize:10,color:"#00000099",marginTop:2 }}>Show this to your barista</div>
+                    <div style={{ fontSize:16,fontWeight:900,color:"#000",marginTop:4,letterSpacing:".1em",fontFamily:"monospace" }}>HARL-X7K2</div>
+                  </div>
+                : <button onClick={doStamp} style={{ width:"100%",background:stamping?C.vi+"88":C.vi,border:"none",borderRadius:10,padding:"10px",fontSize:13,fontWeight:700,color:"#000",cursor:"pointer",transition:"all .3s",transform:stamping?"scale(.97)":"scale(1)" }}>
+                    {stamping?"✓ Stamped!":"Check in & earn stamp"}
+                  </button>
+              }
+              {stampCount<10 && stampCount>3 && <button onClick={()=>setStampCount(3)} style={{ width:"100%",background:"transparent",border:"none",padding:"6px",fontSize:10,color:C.t4,cursor:"pointer",marginTop:4 }}>reset demo</button>}
+            </div>
+          ,C.vi)}
         </div>
       </section>
-      <section style={{ padding:`clamp(48px,7vw,80px) ${px}px`,borderTop:`1px solid ${C.b1}`,borderBottom:`1px solid ${C.b1}` }}>
-        <div style={{ maxWidth:700,margin:"0 auto",textAlign:"center" }}>
-          <Tag color={C.vi}>Simple pricing</Tag>
-          <h2 style={{ fontSize:`clamp(24px,4vw,42px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginTop:16,marginBottom:12 }}>One plan. Everything included.</h2>
-          <p style={{ color:C.t4,fontSize:mob?14:16,marginBottom:36,lineHeight:1.65 }}>No tiers. No feature locks. No surprises. Just everything your business needs at one flat price.</p>
-          <div style={{ ...card(true),border:`1px solid ${C.vi}40`,boxShadow:`0 0 60px ${C.viGlo}`,borderRadius:18,overflow:"hidden",marginBottom:20 }}>
-            <div style={{ background:`linear-gradient(135deg,${C.bg3},${C.bg4})`,padding:mob?"28px 20px":"40px 48px",textAlign:"center",borderBottom:`1px solid ${C.b2}` }}>
-              <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:14 }}>PRO PLAN — EVERYTHING INCLUDED</div>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}`,background:C.bg1 }}>
+        <div style={{ ...maxW(1000),display:"flex",alignItems:"center",gap:mob?32:56,flexDirection:mob?"column":"row-reverse" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:C.cy,letterSpacing:".1em",marginBottom:12 }}>SMART QR RULES</div>
+            <h2 style={{ fontSize:`clamp(22px,3.5vw,38px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:14,lineHeight:1.1 }}>One QR code that knows what to show and when</h2>
+            <p style={{ fontSize:14,color:C.t4,lineHeight:1.75,marginBottom:20 }}>Your QR code reads the situation — time of day, weather, whether it's a new customer — and routes them to exactly the right page. You set the rules once. It runs forever.</p>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {rules.map((r,i)=>(
+                <div key={i} onClick={()=>setActiveRule(i)} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,border:`1px solid ${activeRule===i?r.color+"50":C.b2}`,background:activeRule===i?r.color+"12":C.bg2,cursor:"pointer",transition:"all .25s" }}>
+                  <span style={{ fontSize:18,flexShrink:0 }}>{r.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12,fontWeight:600,color:activeRule===i?C.t1:C.t3 }}>{r.trigger} <span style={{ color:r.color }}>{r.action}</span></div>
+                    <div style={{ fontSize:11,color:C.t4 }}>{r.biz}</div>
+                  </div>
+                  {activeRule===i && <div style={{ width:6,height:6,borderRadius:"50%",background:r.color,boxShadow:`0 0 8px ${r.color}`,flexShrink:0 }}/>}
+                </div>
+              ))}
+            </div>
+          </div>
+          {phoneFrame(
+            <div style={{ padding:"14px",background:"#000",minHeight:340 }}>
+              <div style={{ textAlign:"center",marginBottom:12 }}>
+                <div style={{ fontSize:10,color:C.t4,marginBottom:4 }}>Smart QR scanned at</div>
+                <div style={{ fontSize:13,fontWeight:700,color:rules[activeRule].color }}>{rules[activeRule].biz}</div>
+              </div>
+              <div key={activeRule} style={{ background:rules[activeRule].color+"15",border:`1px solid ${rules[activeRule].color}30`,borderRadius:12,padding:"14px",marginBottom:12,animation:"fadeUp .35s ease" }}>
+                <div style={{ fontSize:24,textAlign:"center",marginBottom:8 }}>{rules[activeRule].icon}</div>
+                <div style={{ fontSize:11,fontWeight:600,color:C.t3,textAlign:"center",marginBottom:4 }}>Rule matched:</div>
+                <div style={{ fontSize:12,fontWeight:700,color:rules[activeRule].color,textAlign:"center",marginBottom:8 }}>{rules[activeRule].trigger}</div>
+                <div style={{ background:rules[activeRule].color,borderRadius:8,padding:"8px",textAlign:"center" }}>
+                  <div style={{ fontSize:12,fontWeight:800,color:"#000" }}>{rules[activeRule].action.replace("→ ","")}</div>
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:4 }}>
+                {rules.map((_,i)=>(
+                  <div key={i} style={{ flex:1,height:2,borderRadius:99,background:i===activeRule?rules[activeRule].color:C.b3,transition:"background .3s" }}/>
+                ))}
+              </div>
+              <div style={{ fontSize:10,color:C.t4,textAlign:"center",marginTop:8 }}>Auto-checks every rule on every scan</div>
+            </div>
+          ,rules[activeRule].color)}
+        </div>
+      </section>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}` }}>
+        <div style={{ ...maxW(1000),display:"flex",alignItems:"center",gap:mob?32:56,flexDirection:mob?"column":"row" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:C.am,letterSpacing:".1em",marginBottom:12 }}>WIN-BACK EMAILS</div>
+            <h2 style={{ fontSize:`clamp(22px,3.5vw,38px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:14,lineHeight:1.1 }}>Customers who ghost you get a reason to come back</h2>
+            <p style={{ fontSize:14,color:C.t4,lineHeight:1.75,marginBottom:20 }}>When a customer hasn't visited in 60 days, they automatically receive a personal email from your business with a custom offer. No manual work. It fires while you sleep.</p>
+            <div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:24 }}>
+              {[
+                { icon:"📍",text:"You set the threshold — 30, 60, or 90 days, your call" },
+                { icon:"✍️",text:"You write the offer — we send it in your voice" },
+                { icon:"🔁",text:"Won't resend to the same customer for 30 days" },
+                { icon:"📊",text:"Customers who return after win-back earn stamps normally" },
+              ].map(f=>(
+                <div key={f.icon} style={{ display:"flex",gap:12,alignItems:"flex-start" }}>
+                  <span style={{ fontSize:16,flexShrink:0,marginTop:1 }}>{f.icon}</span>
+                  <span style={{ fontSize:13,color:C.t3,lineHeight:1.6 }}>{f.text}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>{ setWinbackPlaying(false); setTimeout(()=>setWinbackPlaying(true),50); }} style={{ ...btnP(C.am),fontSize:13,padding:"10px 20px" }}>▶ See it in action</button>
+          </div>
+          <div style={{ flexShrink:0,width:mob?"100%":280,maxWidth:320 }}>
+            <div style={{ background:"#0d0d0d",border:`1px solid ${C.b2}`,borderRadius:16,overflow:"hidden",boxShadow:"0 24px 64px rgba(0,0,0,.8)" }}>
+              <div style={{ background:"#111",padding:"10px 14px",borderBottom:`1px solid ${C.b2}`,display:"flex",alignItems:"center",gap:8 }}>
+                <div style={{ width:8,height:8,borderRadius:"50%",background:"#ef4444" }}/>
+                <div style={{ width:8,height:8,borderRadius:"50%",background:"#f59e0b" }}/>
+                <div style={{ width:8,height:8,borderRadius:"50%",background:"#22c55e" }}/>
+                <div style={{ flex:1,background:"#1a1a1a",borderRadius:4,padding:"3px 8px",marginLeft:4 }}>
+                  <span style={{ fontSize:9,color:C.t4 }}>Inbox</span>
+                </div>
+              </div>
+              <div style={{ padding:"16px 14px" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12 }}>
+                  <div style={{ width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.vi},${C.am})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#000",flexShrink:0 }}>H</div>
+                  <div>
+                    <div style={{ fontSize:10,fontWeight:700,color:C.t1 }}>Harlem Cafe</div>
+                    <div style={{ fontSize:9,color:C.t4 }}>via Xhibitur Rewards</div>
+                  </div>
+                  <div style={{ marginLeft:"auto",fontSize:9,color:C.t4 }}>2m ago</div>
+                </div>
+                <div style={{ fontSize:11,fontWeight:700,color:C.t1,marginBottom:10,lineHeight:1.4 }}>We miss you, Sarah ☕</div>
+                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                  <div style={{ fontSize:11,color:C.t3,lineHeight:1.6,opacity:winbackStep>=1?1:0.15,transition:"opacity .5s" }}>
+                    Hey Sarah! It's been a while since your last visit. You still have <strong style={{ color:C.vi }}>7 stamps</strong> — just 3 away from your free coffee!
+                  </div>
+                  <div style={{ background:C.am+"15",border:`1px solid ${C.am}30`,borderRadius:8,padding:"8px 10px",opacity:winbackStep>=2?1:0,transform:winbackStep>=2?"translateY(0)":"translateY(8px)",transition:"all .5s" }}>
+                    <div style={{ fontSize:10,fontWeight:700,color:C.am,marginBottom:3 }}>YOUR OFFER</div>
+                    <div style={{ fontSize:11,color:C.t1 }}>Come back this week and get a <strong>free pastry</strong> with any order 🥐</div>
+                  </div>
+                  <div style={{ opacity:winbackStep>=3?1:0,transition:"opacity .5s .2s" }}>
+                    <div style={{ background:C.vi,borderRadius:8,padding:"8px",textAlign:"center" }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:"#000" }}>Claim my offer →</div>
+                    </div>
+                    <div style={{ fontSize:9,color:C.t4,textAlign:"center",marginTop:6 }}>Tap to check in and earn your stamp</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {!winbackPlaying && <div style={{ textAlign:"center",marginTop:10,fontSize:11,color:C.t4 }}>Press the button to see the email animate ↑</div>}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}`,background:C.bg1 }}>
+        <div style={{ ...maxW(900),textAlign:"center" }}>
+          <div style={{ fontSize:11,fontWeight:700,color:C.fu,letterSpacing:".1em",marginBottom:12 }}>LOYALTY TIERS</div>
+          <h2 style={{ fontSize:`clamp(22px,3.5vw,38px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:12,lineHeight:1.1 }}>Bronze. Silver. Gold. Customers keep climbing.</h2>
+          <p style={{ fontSize:14,color:C.t4,lineHeight:1.75,maxWidth:560,margin:"0 auto 40px" }}>Give your best customers status. As they earn more stamps, they unlock bigger rewards — automatically.</p>
+          <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":tab?"1fr 1fr 1fr":"repeat(3,1fr)",gap:16 }}>
+            {[
+              { tier:"Bronze", icon:"🥉", stamps:"5 stamps", reward:"Free drink upgrade", col:"#cd7f32", desc:"Every new customer starts here" },
+              { tier:"Silver", icon:"🥈", stamps:"10 stamps", reward:"15% off your order", col:"#9e9e9e", desc:"They're coming back — reward it" },
+              { tier:"Gold",   icon:"🥇", stamps:"20 stamps", reward:"Free item of choice", col:C.vi,     desc:"VIP treatment for your regulars" },
+            ].map((t,i)=>(
+              <div key={i} style={{ background:C.bg2,border:`1px solid ${t.col}30`,borderRadius:16,padding:"24px 20px",position:"relative",overflow:"hidden" }}>
+                <div style={{ position:"absolute",top:-20,right:-20,fontSize:80,opacity:.06 }}>{t.icon}</div>
+                <div style={{ fontSize:32,marginBottom:10 }}>{t.icon}</div>
+                <div style={{ fontSize:16,fontWeight:800,color:t.col,marginBottom:4 }}>{t.tier}</div>
+                <div style={{ fontSize:12,color:C.t4,marginBottom:12 }}>{t.desc}</div>
+                <div style={{ background:t.col+"15",border:`1px solid ${t.col}30`,borderRadius:8,padding:"8px 12px" }}>
+                  <div style={{ fontSize:11,color:t.col,fontWeight:700 }}>{t.stamps}</div>
+                  <div style={{ fontSize:13,color:C.t1,fontWeight:600 }}>{t.reward}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}` }}>
+        <div style={{ ...maxW(900) }}>
+          <div style={{ textAlign:"center",marginBottom:mob?32:48 }}>
+            <h2 style={{ fontSize:`clamp(20px,3vw,34px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:10 }}>Built for every Harlem business</h2>
+            <p style={{ fontSize:14,color:C.t4 }}>If you have walk-in customers, Xhibitur Rewards works for you.</p>
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:mob?"repeat(2,1fr)":"repeat(4,1fr)",gap:10 }}>
+            {["☕ Cafes","🍽️ Restaurants","🍸 Bars","💪 Gyms","✂️ Salons","🛍️ Boutiques","🥗 Juice Bars","🏪 Delis"].map(b=>(
+              <div key={b} style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:12,padding:"14px",textAlign:"center",fontSize:13,color:C.t3,fontWeight:500 }}>{b}</div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}`,background:C.bg1 }}>
+        <div style={{ ...maxW(680),textAlign:"center" }}>
+          <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:12 }}>PRICING</div>
+          <h2 style={{ fontSize:`clamp(24px,4vw,44px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:12 }}>One price. Everything included.</h2>
+          <p style={{ fontSize:15,color:C.t4,marginBottom:36 }}>No feature tiers. No add-ons. Everything unlocked from day one.</p>
+          <div style={{ background:C.bg2,border:`1px solid ${C.vi}40`,borderRadius:20,overflow:"hidden",boxShadow:`0 0 80px ${C.viGlo}`,marginBottom:20 }}>
+            <div style={{ padding:mob?"28px 20px":"40px 48px",borderBottom:`1px solid ${C.b2}` }}>
+              <div style={{ fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".1em",marginBottom:16 }}>PRO PLAN — EVERYTHING INCLUDED</div>
               <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"center",gap:4,marginBottom:4 }}>
-                <span style={{ fontSize:mob?60:80,fontWeight:900,letterSpacing:"-.05em",color:C.t1,lineHeight:1 }}>$49.99</span>
-                <span style={{ fontSize:16,color:C.t3,fontWeight:400,marginBottom:10 }}>/month</span>
+                <span style={{ fontSize:mob?64:84,fontWeight:900,letterSpacing:"-.05em",color:C.t1,lineHeight:1 }}>$49</span>
+                <span style={{ fontSize:mob?28:34,fontWeight:900,color:C.vi,lineHeight:1,marginBottom:6 }}>.99</span>
+                <span style={{ fontSize:16,color:C.t3,marginBottom:10 }}>/mo</span>
               </div>
               <div style={{ fontSize:13,color:C.t4,marginBottom:28 }}>or $490.99/year — 2 months free</div>
-              <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:mob?8:10,marginBottom:28,textAlign:"left" }}>
-                {ALL_FEATURES.map(f=>(<div key={f} style={{ display:"flex",alignItems:"center",gap:9 }}><span style={{ color:C.vi,fontSize:13,fontWeight:700,flexShrink:0 }}>✓</span><span style={{ fontSize:mob?13:14,color:C.t2 }}>{f}</span></div>))}
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:mob?8:10,marginBottom:28,textAlign:"left" }}>
+                {ALL_FEATURES.map(f=>(<div key={f} style={{ display:"flex",alignItems:"center",gap:9 }}><span style={{ color:C.vi,fontSize:13,fontWeight:700,flexShrink:0 }}>✓</span><span style={{ fontSize:mob?12:13,color:C.t2 }}>{f}</span></div>))}
               </div>
               <button onClick={()=>nav("signup")} style={{ ...btnP(C.vi,true),fontSize:mob?15:16,padding:"15px",boxShadow:`0 0 40px ${C.viGlo}`,maxWidth:380 }}>Start 14-day free trial</button>
-              <div style={{ marginTop:12,fontSize:12,color:C.t4 }}>No credit card required · $49.99/mo after trial · Cancel any time</div>
+              <div style={{ marginTop:12,fontSize:12,color:C.t4 }}>No credit card required · Cancel any time</div>
             </div>
           </div>
           <button onClick={()=>nav("pricing")} style={{ ...btnG(),fontSize:14 }}>See full details & FAQ →</button>
         </div>
       </section>
-      <section style={{ padding:`clamp(48px,7vw,80px) ${px}px`,textAlign:"center",borderTop:`1px solid ${C.b1}`,background:C.bg1 }}>
-        <h2 style={{ fontSize:`clamp(26px,5vw,52px)`,fontWeight:900,letterSpacing:"-.05em",marginBottom:14,lineHeight:1.05,color:C.t1 }}>Start building loyalty<br/><span style={{ color:C.vi }}>today.</span></h2>
-        <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:28 }}>14-day free trial. No credit card. Cancel any time.</p>
-        <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:mob?"14px 28px":"15px 36px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free trial →</button>
-        <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49.99/month after trial · Cancel any time</div>
+
+      <section style={{ ...sec(),textAlign:"center",background:"#000",position:"relative",overflow:"hidden" }}>
+        <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:600,height:400,background:`radial-gradient(ellipse,rgba(212,160,23,.14) 0%,transparent 68%)`,pointerEvents:"none" }}/>
+        <div style={{ ...maxW(600),position:"relative" }}>
+          <h2 style={{ fontSize:`clamp(28px,5vw,58px)`,fontWeight:900,letterSpacing:"-.05em",marginBottom:14,lineHeight:1.05,color:C.t1 }}>Ready to build loyalty<br/><span style={{ color:C.vi }}>that runs itself?</span></h2>
+          <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:32,lineHeight:1.7 }}>Join Harlem's smartest small businesses. Set up in 5 minutes. No app. No tech skills. Just customers coming back.</p>
+          <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:17,padding:mob?"15px 28px":"17px 44px",boxShadow:`0 0 60px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free — 14 days on us →</button>
+          <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49.99/month after · Cancel any time · No credit card needed</div>
+        </div>
       </section>
+
       <footer style={{ background:C.bg,borderTop:`1px solid ${C.b1}`,padding:`20px ${px}px` }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,marginBottom:12 }}>
           <Wordmark sm/><span style={{ color:C.t4,fontSize:11 }}>© 2026 Xhibitur LLC. All rights reserved.</span>
@@ -652,7 +903,6 @@ function Landing() {
     </div>
   );
 }
-
 const FAQ = [
   { q:"What happens after the 14-day trial?", a:"Your account converts to $49.99/month. We send a reminder 3 days before — you're never surprised. Cancel any time before then and you won't be charged a penny." },
   { q:"Do I need a credit card to start?", a:"No. Start with just your email. We only ask for payment details when your trial ends." },
@@ -1350,7 +1600,7 @@ function CheckInPage() {
   },[slug]);
 
   const recordRedemption = (rewardLabel) => {
-    fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email: email.toLowerCase(), reward: rewardLabel||"" }) }).catch(()=>{});
+    fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email: email.toLowerCase(), reward: rewardLabel||"reward" }) }).catch(()=>{});
   };
 
   const handleCheckin = async e => {
