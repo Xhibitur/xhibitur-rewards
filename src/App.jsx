@@ -625,14 +625,13 @@ function Landing() {
         <div style={{ ...maxW(720),position:"relative" }}>
           <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:99,padding:"5px 14px",marginBottom:24 }}>
             <span style={{ width:6,height:6,borderRadius:"50%",background:C.ok,boxShadow:`0 0 8px ${C.ok}`,display:"inline-block" }}/>
-            <span style={{ fontSize:11,fontWeight:600,color:C.t3,letterSpacing:".06em" }}>QR LOYALTY FOR SMALL BUSINESSES</span>
+            <span style={{ fontSize:11,fontWeight:600,color:C.t3,letterSpacing:".06em" }}>XHIBITUR REWARDS — RETAIN AND REWARD YOUR CUSTOMERS</span>
           </div>
           <h1 style={{ fontSize:`clamp(36px,7.5vw,76px)`,fontWeight:900,letterSpacing:"-.05em",lineHeight:1,marginBottom:20,color:C.t1 }}>
-            Turn walk-ins into<br/>
-            <span style={{ background:`linear-gradient(135deg,${C.vi},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>regulars. Automatically.</span>
+            Turn walk-ins into <span style={{ background:`linear-gradient(135deg,${C.vi},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>regulars. Automatically.</span>
           </h1>
           <p style={{ fontSize:`clamp(15px,2.2vw,19px)`,color:C.t3,lineHeight:1.7,maxWidth:480,margin:"0 auto 36px" }}>
-            One QR code. Customers scan, earn stamps, get rewarded — and come back when they drift. No app. No staff training. Just results.
+            Your customers scan a code and earn stamps every visit towards a reward. When a customer hasn't visited in 30 days, we automatically send emails to win them back. No app to download. No staff training. Just results.
           </p>
           <div style={{ display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:16 }}>
             <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:16,padding:"15px 32px",boxShadow:`0 0 40px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free — 14 days on us</button>
@@ -842,7 +841,7 @@ function Landing() {
       <section style={{ ...sec(),borderBottom:`1px solid ${C.b1}` }}>
         <div style={{ ...maxW(900) }}>
           <div style={{ textAlign:"center",marginBottom:mob?32:48 }}>
-            <h2 style={{ fontSize:`clamp(20px,3vw,34px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:10 }}>Built for every Harlem business</h2>
+            <h2 style={{ fontSize:`clamp(20px,3vw,34px)`,fontWeight:900,letterSpacing:"-.04em",color:C.t1,marginBottom:10 }}>Built for every business</h2>
             <p style={{ fontSize:14,color:C.t4 }}>If you have walk-in customers, Xhibitur Rewards works for you.</p>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:mob?"repeat(2,1fr)":"repeat(4,1fr)",gap:10 }}>
@@ -882,7 +881,7 @@ function Landing() {
         <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:600,height:400,background:`radial-gradient(ellipse,rgba(212,160,23,.14) 0%,transparent 68%)`,pointerEvents:"none" }}/>
         <div style={{ ...maxW(600),position:"relative" }}>
           <h2 style={{ fontSize:`clamp(28px,5vw,58px)`,fontWeight:900,letterSpacing:"-.05em",marginBottom:14,lineHeight:1.05,color:C.t1 }}>Ready to build loyalty<br/><span style={{ color:C.vi }}>that runs itself?</span></h2>
-          <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:32,lineHeight:1.7 }}>Join Harlem's smartest small businesses. Set up in 5 minutes. No app. No tech skills. Just customers coming back.</p>
+          <p style={{ color:C.t4,fontSize:mob?14:15,marginBottom:32,lineHeight:1.7 }}>Set up in 5 minutes. No app. No tech skills. Just customers coming back.</p>
           <button onClick={()=>nav("signup")} style={{ ...btnP(),fontSize:mob?15:17,padding:mob?"15px 28px":"17px 44px",boxShadow:`0 0 60px ${C.viGlo}`,width:mob?"100%":"auto",maxWidth:mob?320:undefined }}>Start free — 14 days on us →</button>
           <div style={{ marginTop:14,fontSize:12,color:C.t4 }}>$49.99/month after · Cancel any time · No credit card needed</div>
         </div>
