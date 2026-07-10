@@ -623,9 +623,9 @@ function Landing() {
       <section style={{ ...sec(),textAlign:"center",position:"relative",borderBottom:`1px solid ${C.b1}` }}>
         <div style={{ position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:700,height:480,background:`radial-gradient(ellipse,rgba(212,160,23,.16) 0%,transparent 68%)`,pointerEvents:"none" }}/>
         <div style={{ ...maxW(720),position:"relative" }}>
-          <div style={{ display:"inline-flex",alignItems:"center",gap:8,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:99,padding:"5px 14px",marginBottom:24 }}>
-            <span style={{ width:6,height:6,borderRadius:"50%",background:C.ok,boxShadow:`0 0 8px ${C.ok}`,display:"inline-block" }}/>
-            <span style={{ fontSize:11,fontWeight:600,color:C.t3,letterSpacing:".06em" }}>XHIBITUR REWARDS — RETAIN AND REWARD YOUR CUSTOMERS</span>
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:99,padding:"7px 18px",marginBottom:24,whiteSpace:"nowrap",overflow:"hidden" }}>
+            <span style={{ width:6,height:6,borderRadius:"50%",background:C.ok,boxShadow:`0 0 8px ${C.ok}`,display:"inline-block",flexShrink:0 }}/>
+            <span style={{ fontSize:`clamp(9px,2.2vw,12px)`,fontWeight:700,color:C.t1,letterSpacing:".07em",whiteSpace:"nowrap" }}>XHIBITUR REWARDS — RETAIN AND REWARD YOUR CUSTOMERS</span>
           </div>
           <h1 style={{ fontSize:`clamp(36px,7.5vw,76px)`,fontWeight:900,letterSpacing:"-.05em",lineHeight:1,marginBottom:20,color:C.t1 }}>
             Turn walk-ins into <span style={{ background:`linear-gradient(135deg,${C.vi},#f97316)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>regulars. Automatically.</span>
