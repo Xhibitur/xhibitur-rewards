@@ -1,42 +1,18 @@
 // netlify/functions/auth.js
 const { createClient } = require("@supabase/supabase-js");
+const { Resend } = require("resend");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
 };
-
-// Send email via Resend
-async function sendEmail({ to, subject, html }) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) { console.log("No RESEND_API_KEY"); return false; }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Xhibitur Rewards <notifications@xhibitur.com>",
-        to,
-        subject,
-        html,
-      }),
-    });
-    const data = await res.json();
-    console.log("Email result:", JSON.stringify(data));
-    return res.ok;
-  } catch(e) {
-    console.log("Email error:", e.message);
-    return false;
-  }
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -44,7 +20,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { action, email, password, name, token, newPassword } = JSON.parse(event.body || "{}");
+    const { action, email, password, name, token, newPassword, partnerId } = JSON.parse(event.body || "{}");
 
     // ── SIGN UP ───────────────────────────────────────────────────────────────
     if (action === "signup") {
@@ -69,55 +45,34 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: error.message }) };
       }
 
-      // Save to users table
+      // Insert into users table
       await supabase.from("users").upsert({
         id: data.user.id,
         email: email.toLowerCase(),
         name,
         plan: "trial",
         trial_start: new Date().toISOString(),
-      }, { onConflict: "email" });
+        partner_id: (typeof partnerId === "string" && partnerId.trim()) ? partnerId.trim().toLowerCase().slice(0, 50) : null,
+      });
 
-      // Sign in immediately
-      const { data: session, error: signInErr } = await supabase.auth.signInWithPassword({
+      // Sign in to get token
+      const { data: session, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase(),
         password,
       });
 
-      if (signInErr) {
-        return { statusCode: 200, headers, body: JSON.stringify({
-          success: true,
-          user: { id: data.user.id, email: email.toLowerCase(), name, plan: "trial" }
-        })};
+      if (signInError) {
+        return { statusCode: 200, headers, body: JSON.stringify({ user: { id: data.user.id, email: email.toLowerCase(), name, plan: "trial" } }) };
       }
 
-      // Send welcome email
-      await sendEmail({
-        to: email,
-        subject: "Welcome to Xhibitur Rewards! 🎉",
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#000;color:#fff;border-radius:12px;overflow:hidden">
-            <div style="background:#D4A017;padding:20px 24px;text-align:center">
-              <div style="font-size:24px;font-weight:900;color:#000">Xhibitur Rewards</div>
-            </div>
-            <div style="padding:28px 24px">
-              <h2 style="color:#fff;margin:0 0 12px">Welcome, ${name}! 👋</h2>
-              <p style="color:#a3a3a3;font-size:14px;line-height:1.6;margin:0 0 20px">Your 14-day free trial has started. Set up your first Smart QR code and rewards program today.</p>
-              <div style="text-align:center;margin-bottom:24px">
-                <a href="https://rewards.xhibitur.com/#/dashboard" style="display:inline-block;background:#D4A017;color:#000;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Go to dashboard →</a>
-              </div>
-              <p style="font-size:12px;color:#333;text-align:center">Powered by Xhibitur Rewards · rewards.xhibitur.com</p>
-            </div>
-          </div>
-        `,
-      });
-
-      return { statusCode: 200, headers, body: JSON.stringify({
-        success: true,
-        token: session.session.access_token,
-        refreshToken: session.session.refresh_token,
-        user: { id: data.user.id, email: email.toLowerCase(), name, plan: "trial" }
-      })};
+      return {
+        statusCode: 200, headers,
+        body: JSON.stringify({
+          user: { id: data.user.id, email: email.toLowerCase(), name, plan: "trial" },
+          token: session.session?.access_token,
+          refreshToken: session.session?.refresh_token,
+        }),
+      };
     }
 
     // ── SIGN IN ───────────────────────────────────────────────────────────────
@@ -132,33 +87,29 @@ exports.handler = async (event) => {
       });
 
       if (error) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid email or password" }) };
+        return { statusCode: 401, headers, body: JSON.stringify({ error: "Invalid email or password." }) };
       }
 
-      const { data: profile } = await supabase
+      // Fetch user record for name and plan
+      const { data: userRow } = await supabase
         .from("users")
         .select("name, plan")
         .eq("email", email.toLowerCase())
         .single();
 
-      let plan = profile?.plan || "trial";
-      try {
-        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-        const customers = await stripe.customers.list({ email: email.toLowerCase(), limit: 1 });
-        if (customers.data.length) {
-          const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
-          if (subs.data.length) plan = "pro";
-        }
-      } catch(e) {}
-
-      const userName = profile?.name || data.user.user_metadata?.name || email.split("@")[0];
-
-      return { statusCode: 200, headers, body: JSON.stringify({
-        success: true,
-        token: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        user: { id: data.user.id, email: email.toLowerCase(), name: userName, plan }
-      })};
+      return {
+        statusCode: 200, headers,
+        body: JSON.stringify({
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: userRow?.name || data.user.user_metadata?.name || "",
+            plan: userRow?.plan || data.user.user_metadata?.plan || "trial",
+          },
+          token: data.session?.access_token,
+          refreshToken: data.session?.refresh_token,
+        }),
+      };
     }
 
     // ── FORGOT PASSWORD ───────────────────────────────────────────────────────
@@ -167,36 +118,42 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Email required" }) };
       }
 
-      // Generate a secure reset token using Supabase
+      // Generate a password reset link via Supabase
       const { data, error } = await supabase.auth.admin.generateLink({
         type: "recovery",
         email: email.toLowerCase(),
         options: {
           redirectTo: "https://rewards.xhibitur.com/#/reset-password",
-        }
+        },
       });
 
-      // Always return success — don't reveal if email exists
       if (error) {
-        console.log("generateLink error:", error.message);
+        // Return success even if email not found (security best practice)
         return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
       }
 
-      // Send the reset email ourselves via Resend
-      const resetLink = data?.properties?.action_link;
-      if (resetLink) {
-        await sendEmail({
-          to: email,
-          subject: "Reset your Xhibitur Rewards password",
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#000;color:#fff;border-radius:12px;overflow:hidden">
-              <div style="background:#D4A017;padding:20px 24px;text-align:center">
-                <div style="font-size:24px;font-weight:900;color:#000">Xhibitur Rewards</div>
-                <div style="font-size:13px;color:#000;margin-top:4px">Password Reset</div>
+      const resetLink = data.properties?.action_link;
+      if (!resetLink) {
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+      }
+
+      // Send via Resend
+      await resend.emails.send({
+        from: "Xhibitur Rewards <notifications@xhibitur.com>",
+        to: email.toLowerCase(),
+        subject: "Reset your Xhibitur Rewards password",
+        html: `
+          <div style="font-family:Inter,sans-serif;background:#000;padding:32px;min-height:100vh">
+            <div style="max-width:480px;margin:0 auto;background:#111;border:1px solid #1a1a1a;border-radius:16px;overflow:hidden">
+              <div style="background:#0a0a0a;padding:24px 28px;border-bottom:1px solid #1a1a1a">
+                <span style="font-size:18px;font-weight:800;color:#fff">Xhibitur</span>
+                <span style="font-size:16px;font-weight:700;color:#D4A017">Rewards</span>
               </div>
-              <div style="padding:28px 24px">
-                <h2 style="color:#fff;margin:0 0 12px">Reset your password</h2>
-                <p style="color:#a3a3a3;font-size:14px;line-height:1.6;margin:0 0 24px">We received a request to reset your password. Click the button below to set a new one. This link expires in 1 hour.</p>
+              <div style="padding:28px">
+                <h2 style="color:#fff;font-size:20px;font-weight:800;margin:0 0 12px">Reset your password</h2>
+                <p style="color:#a3a3a3;font-size:14px;line-height:1.65;margin:0 0 24px">
+                  We received a request to reset your password. Click the button below to set a new one. This link expires in 1 hour.
+                </p>
                 <div style="text-align:center;margin-bottom:24px">
                   <a href="${resetLink}" style="display:inline-block;background:#D4A017;color:#000;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;text-decoration:none">Reset my password →</a>
                 </div>
@@ -204,9 +161,9 @@ exports.handler = async (event) => {
                 <p style="font-size:12px;color:#333;text-align:center;margin-top:20px">Powered by Xhibitur Rewards · rewards.xhibitur.com</p>
               </div>
             </div>
-          `,
-        });
-      }
+          </div>
+        `,
+      });
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
@@ -219,18 +176,51 @@ exports.handler = async (event) => {
       if (newPassword.length < 8) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "Password must be at least 8 characters" }) };
       }
-const { data: userData, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !userData?.user) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid or expired reset link. Please request a new one." }) };
+
+      // Use the access_token to create a user-scoped Supabase client
+      // then call updateUser — this is the correct way to use recovery tokens
+      const userSupabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY  // anon key for user-scoped client
+      );
+
+      // Set the session using the recovery access token
+      const { data: sessionData, error: sessionError } = await userSupabase.auth.setSession({
+        access_token: token,
+        refresh_token: token, // recovery tokens act as both
+      });
+
+      if (sessionError) {
+        // Fallback: try to decode the JWT to get user ID and use admin client
+        try {
+          const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+          const userId = payload.sub;
+          if (!userId) throw new Error("No user ID in token");
+
+          const { error: adminError } = await supabase.auth.admin.updateUserById(userId, {
+            password: newPassword,
+          });
+
+          if (adminError) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid or expired reset link. Please request a new one." }) };
+          }
+
+          return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+        } catch (decodeErr) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid or expired reset link. Please request a new one." }) };
+        }
       }
-      const { error } = await supabase.auth.admin.updateUserById(userData.user.id, {
+
+      // Update password using the user-scoped client
+      const { error: updateError } = await userSupabase.auth.updateUser({
         password: newPassword,
       });
-      if (error) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "Failed to update password. Please request a new reset link." }) };
+
+      if (updateError) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid or expired reset link. Please request a new one." }) };
       }
+
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
-     
     }
 
     // ── UPDATE NAME ───────────────────────────────────────────────────────────
