@@ -122,10 +122,12 @@ function AuthProvider({ children }) {
   const signUp = async (em, pw, nm) => {
     if (!em||!pw||!nm) throw new Error("All fields required");
     if (pw.length<8) throw new Error("Password must be at least 8 characters");
-    const data = await callAuth({ action:"signup", email:em, password:pw, name:nm });
+    const partnerId = getPartner();
+    const data = await callAuth({ action:"signup", email:em, password:pw, name:nm, partnerId });
     if (data.error) throw new Error(data.error);
     if (data.token) localStorage.setItem("xr_token", data.token);
     if (data.refreshToken) localStorage.setItem("xr_refresh", data.refreshToken);
+    try { if (partnerId && window.gtag) window.gtag("event","partner_signup",{ partner: partnerId }); } catch{}
     save({ id:data.user.id, email:data.user.email, name:data.user.name, plan:"trial", trialStart:new Date().toISOString() });
   };
   const signOut = () => { setU(null); localStorage.removeItem("xr_u"); localStorage.removeItem("xr_token"); localStorage.removeItem("xr_refresh"); };
@@ -136,8 +138,36 @@ function AuthProvider({ children }) {
 const useAuth = () => useContext(AuthCtx);
 
 const RouteCtx = createContext(null);
+
+// ── Partner referral attribution ──────────────────────────────────────────────
+const PARTNER_KEY = "xr_partner";
+const PARTNER_DAYS = 60;
+function capturePartner(pid) {
+  if (!pid || !/^[a-z0-9-]{2,50}$/i.test(pid)) return;
+  const rec = { id: pid.toLowerCase(), exp: Date.now() + PARTNER_DAYS*864e5 };
+  try { localStorage.setItem(PARTNER_KEY, JSON.stringify(rec)); } catch{}
+  try { if (window.gtag) window.gtag("event","partner_visit",{ partner: rec.id }); } catch{}
+}
+function getPartner() {
+  try {
+    const rec = JSON.parse(localStorage.getItem(PARTNER_KEY)||"null");
+    if (rec && rec.id && rec.exp > Date.now()) return rec.id;
+    if (rec) localStorage.removeItem(PARTNER_KEY);
+  } catch{}
+  return null;
+}
+
 function RouterProvider({ children }) {
-  const get = () => window.location.hash.replace(/^#\/?/,"") || "home";
+  const get = () => {
+    let h = window.location.hash.replace(/^#\/?/,"") || "home";
+    // Partner referral links: rewards.xhibitur.com/#/p/<partner> → capture, land on home
+    if (h.toLowerCase().startsWith("p/")) {
+      capturePartner(h.slice(2).split("?")[0].split("/")[0]);
+      window.location.hash = "#/";
+      return "home";
+    }
+    return h;
+  };
   const [page, setPage] = useState(get);
   const nav = to => { const p=to.replace(/^\//,""); window.location.hash="#/"+p; setPage(p); window.scrollTo(0,0); };
   useEffect(() => { const h = () => { setPage(get()); window.scrollTo(0,0); }; window.addEventListener("hashchange",h); return () => window.removeEventListener("hashchange",h); },[]);
