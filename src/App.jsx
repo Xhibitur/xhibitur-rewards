@@ -1109,6 +1109,10 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
   const [png,setPng]=useState(null);
   const [saving,setSaving]=useState(false);
   const [linkedProgram,setLinkedProgram]=useState(init?.linkedProgram||"");
+  const [promoTitle,setPromoTitle]=useState(init?.promoTitle||"");
+  const [promoDesc,setPromoDesc]=useState(init?.promoDesc||"");
+  const [promoButtonText,setPromoButtonText]=useState(init?.promoButtonText||"");
+  const [promoButtonLink,setPromoButtonLink]=useState(init?.promoButtonLink||"");
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
@@ -1123,7 +1127,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
     const rewardSettings = prog ? { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name } : { goal:10, reward:"Free item", programName:"" };
     setSaving(true);
     try {
-      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName }) });
+      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink }) });
     } catch(e) { console.error("KV save failed:", e); }
     setSaving(false);
     onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:autoFallback, fg, linkedProgram });
@@ -1150,6 +1154,27 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
               <div style={{ background:C.em+"0c",border:`1px solid ${C.em}22`,borderRadius:10,padding:"10px 14px" }}>
                 <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
                 <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
+              </div>
+              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:"14px" }}>
+                <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>📢 OPTIONAL PROMOTIONAL SECTION</div>
+                <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                  <div>
+                    <label style={lbl}>Section title (e.g. "TODAY'S SPECIAL")</label>
+                    <input value={promoTitle} onChange={e=>setPromoTitle(e.target.value)} placeholder="Leave blank to hide this section" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Description</label>
+                    <input value={promoDesc} onChange={e=>setPromoDesc(e.target.value)} placeholder="Tell them what's special" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Button text (optional)</label>
+                    <input value={promoButtonText} onChange={e=>setPromoButtonText(e.target.value)} placeholder="e.g. VIEW MENU, BOOK NOW, LEARN MORE" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Button link (optional)</label>
+                    <input value={promoButtonLink} onChange={e=>setPromoButtonLink(e.target.value)} placeholder="https://..." style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+                  </div>
+                </div>
               </div>
               <div>
                 <label style={lbl}>Link to rewards program</label>
@@ -1624,6 +1649,12 @@ function CheckInPage() {
   const [tiers,setTiers]=useState(null);
   const [unlockedTier,setUnlockedTier]=useState(null);
   
+  // Promotional section
+  const [promoTitle,setPromoTitle]=useState("");
+  const [promoDesc,setPromoDesc]=useState("");
+  const [promoButtonText,setPromoButtonText]=useState("");
+  const [promoButtonLink,setPromoButtonLink]=useState("");
+  
   // Load QR data
   useEffect(()=>{
     if (!slug) return;
@@ -1639,6 +1670,10 @@ function CheckInPage() {
         if (data.bizLocation) setBizLocation(data.bizLocation);
         if (data.bizAddress) setBizAddress(data.bizAddress);
         if (data.featureImage) setFeatureImage(data.featureImage);
+        if (data.promoTitle) setPromoTitle(data.promoTitle);
+        if (data.promoDesc) setPromoDesc(data.promoDesc);
+        if (data.promoButtonText) setPromoButtonText(data.promoButtonText);
+        if (data.promoButtonLink) setPromoButtonLink(data.promoButtonLink);
       }).catch(()=>{});
   },[slug]);
 
@@ -1844,6 +1879,18 @@ function CheckInPage() {
           </div>
           <p style={{fontSize:13,color:C.t3,textAlign:"center",marginBottom:20}}>Earn {goal-stamps} more to unlock {reward}</p>
           <button onClick={()=>setStep("checkin")} style={{...btnP(),fontSize:14,padding:"12px",width:"100%"}}>Check in now</button>
+        </div>
+      )}
+
+      {promoTitle && promoDesc && (
+        <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:14,padding:"16px",marginTop:24,marginBottom:20,textAlign:"center" }}>
+          <div style={{ fontSize:13,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:6 }}>{promoTitle}</div>
+          <p style={{ fontSize:13,color:C.t3,lineHeight:1.6,marginBottom:12 }}>{promoDesc}</p>
+          {promoButtonText && promoButtonLink && (
+            <a href={promoButtonLink} target="_blank" rel="noopener noreferrer" style={{...btnP(),fontSize:12,padding:"10px 20px",display:"inline-block",textDecoration:"none"}}>
+              {promoButtonText}
+            </a>
+          )}
         </div>
       )}
 
