@@ -1364,11 +1364,22 @@ function RwdModal({ init,onSave,onClose }) {
   const [refFriendReward,setRefFriendReward]=useState(init?.cfg?.refFriendReward||"1 bonus stamp");
 
   const save = () => {
+    if (!name || name.trim().length === 0) { alert("Program name is required"); return; }
     let cfg = {};
-    if (type==="stamps") { cfg = { stampsRequired:sr, reward:rw, winbackDays:wbd, winbackOffer:wbo }; }
-    else if (type==="tiers") { cfg = { tiers:[{ level:"Bronze",stamps:t1stamps,reward:t1reward,color:C.am },{ level:"Silver",stamps:t2stamps,reward:t2reward,color:C.t3 },{ level:"Gold",stamps:t3stamps,reward:t3reward,color:C.vi }], winbackDays:wbd, winbackOffer:wbo }; }
-    else if (type==="referral") { cfg = { refReward, refFriendReward, winbackDays:wbd, winbackOffer:wbo }; }
-    onSave({ id:init?.id||gid(), name, type, active:true, members:init?.members||0, redemptions:init?.redemptions||0, scans:init?.scans||0, cfg, col:RPAL[RWD.findIndex(x=>x.id===type)%3]||C.vi });
+    if (type==="stamps") { 
+      if (!rw || rw.trim().length === 0) { alert("Reward description is required"); return; }
+      cfg = { stampsRequired:sr, reward:rw, winbackDays:wbd, winbackOffer:wbo }; 
+    }
+    else if (type==="tiers") { 
+      if (!t1reward || !t2reward || !t3reward) { alert("All tier rewards are required"); return; }
+      cfg = { tiers:[{ level:"Bronze",stamps:t1stamps,reward:t1reward,color:C.am },{ level:"Silver",stamps:t2stamps,reward:t2reward,color:C.t3 },{ level:"Gold",stamps:t3stamps,reward:t3reward,color:C.vi }], winbackDays:wbd, winbackOffer:wbo }; 
+    }
+    else if (type==="referral") { 
+      if (!refReward || !refFriendReward) { alert("Referral rewards are required"); return; }
+      cfg = { refReward, refFriendReward, winbackDays:wbd, winbackOffer:wbo }; 
+    }
+    const prog = { id:init?.id||Math.random().toString(36).slice(2,9), name:name.trim(), type, active:true, members:init?.members||0, redemptions:init?.redemptions||0, scans:init?.scans||0, cfg, col:RPAL[RWD.findIndex(x=>x.id===type)%3]||C.vi };
+    onSave(prog);
   };
 
   return (
@@ -1588,44 +1599,47 @@ function AccountPage() {
 
 function CheckInPage() {
   const { nav } = useNav();
-  const w=useW(); const mob=w<640;
+  const w=useW(); const mob=w<640; const tab=w<1024;
+  const px = mob?16:20;
   const slug = window.location.hash.replace(/^#\/?checkin\/?/,"").split("?")[0] || "";
-  const [step,setStep]=useState("enter");
+  
+  // State
+  const [step,setStep]=useState("checkin"); // checkin, success, member
   const [email,setEmail]=useState("");
   const [name,setName]=useState("");
-  const [stamps,setStamps]=useState(0);
-  const [goal,setGoal]=useState(10);
-  const [reward,setReward]=useState("Free item");
-  const [bizName,setBizName]=useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState("");
   const [redeemCode,setRedeemCode]=useState("");
+  
+  // Business/Program data
+  const [bizName,setBizName]=useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+  const [bizLogo,setBizLogo]=useState(null);
+  const [bizLocation,setBizLocation]=useState("");
+  const [bizAddress,setBizAddress]=useState("");
+  const [featureImage,setFeatureImage]=useState(null);
+  const [programName,setProgramName]=useState("Loyalty Rewards");
+  const [goal,setGoal]=useState(10);
+  const [reward,setReward]=useState("Free item");
+  const [stamps,setStamps]=useState(0);
   const [tiers,setTiers]=useState(null);
   const [unlockedTier,setUnlockedTier]=useState(null);
-  const [refEnabled,setRefEnabled]=useState(false);
-  const [refBonus,setRefBonus]=useState("1 bonus stamp");
-  const [refLink,setRefLink]=useState("");
-  const [saveEmail,setSaveEmail]=useState("");
-  const [saveErr,setSaveErr]=useState("");
-  const [saveBusy,setSaveBusy]=useState(false);
-  const [restoreCode,setRestoreCode]=useState("");
-  const [restoreInput,setRestoreInput]=useState("");
-
+  
+  // Load QR data
   useEffect(()=>{
     if (!slug) return;
     fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email:"", reward:"__scan__" }) }).catch(()=>{});
-    setBizName(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-    fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`).then(r=>r.json()).then(data=>{
-      if (data.name) setBizName(data.name);
-      if (data.rewardGoal) setGoal(data.rewardGoal);
-      if (data.rewardName) setReward(data.rewardName);
-      if (data.tiers) setTiers(data.tiers);
-      if (data.refEnabled) setRefEnabled(true);
-      if (data.refBonus) setRefBonus(data.refBonus);
-    }).catch(()=>{});
-    const params = new URLSearchParams(window.location.hash.split("?")[1]||"");
-    const refCode = params.get("ref");
-    if (refCode) { try { const refEmail=atob(refCode); sessionStorage.setItem("pending_ref",JSON.stringify({slug,refEmail})); } catch(e){} }
+    fetch(`/.netlify/functions/get-qr-rules?slug=${slug}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if (data.name) setBizName(data.name);
+        if (data.rewardGoal) setGoal(data.rewardGoal);
+        if (data.rewardName) setReward(data.rewardName);
+        if (data.programName) setProgramName(data.programName);
+        if (data.tiers) setTiers(data.tiers);
+        if (data.bizLocation) setBizLocation(data.bizLocation);
+        if (data.bizAddress) setBizAddress(data.bizAddress);
+        if (data.featureImage) setFeatureImage(data.featureImage);
+      }).catch(()=>{});
   },[slug]);
 
   const recordRedemption = (rewardLabel) => {
@@ -1634,201 +1648,212 @@ function CheckInPage() {
 
   const handleCheckin = async e => {
     e.preventDefault();
-    if (!email) { setErr("Please enter your email."); return; }
+    if (!email) { setErr("Email required"); return; }
     setBusy(true); setErr("");
+    
     try {
-      const key=`stamps_${slug}_${email.toLowerCase()}`;
-      const last=localStorage.getItem(`${key}_last`);
-      const now=Date.now();
-      const COOLDOWN=4*60*60*1000;
-      if (last&&now-parseInt(last)<COOLDOWN) { const hoursLeft=Math.ceil((COOLDOWN-(now-parseInt(last)))/3600000); setErr(`You already checked in recently. Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn your next stamp.`); setBusy(false); return; }
-      const isNew=!localStorage.getItem(`${key}_name`)&&!localStorage.getItem(key);
-      const current=parseInt(localStorage.getItem(key)||"0");
-      const pendingRef=sessionStorage.getItem("pending_ref");
-      if (pendingRef&&isNew) { try { const {slug:rSlug,refEmail}=JSON.parse(pendingRef); if(rSlug===slug&&refEmail!==email.toLowerCase()){const refKey=`stamps_${slug}_${refEmail}`;localStorage.setItem(refKey,(parseInt(localStorage.getItem(refKey)||"0")+1).toString());sessionStorage.removeItem("pending_ref");} } catch(e){} }
-      const newStamps=current+1;
-      if (tiers&&tiers.length>0) {
-        const maxTier=tiers[tiers.length-1];
-        const newlyUnlocked=tiers.find(t=>t.stamps===newStamps);
-        if (newlyUnlocked) {
-          const isGold=newlyUnlocked.stamps===maxTier.stamps;
-          if (isGold) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); localStorage.setItem(`${key}_gold`,"true"); setRedeemCode(code); setStamps(0); setUnlockedTier({...newlyUnlocked,redemptionCode:code}); setStep("tier"); recordRedemption(newlyUnlocked.reward); }
-          else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); if(name) localStorage.setItem(`${key}_name`,name); setStamps(newStamps); setUnlockedTier(newlyUnlocked); setStep("tier"); }
-          setBusy(false); return;
-        }
-        const isGoldAgain=localStorage.getItem(`${key}_gold`)==="true"&&newStamps===maxTier.stamps;
-        if (isGoldAgain) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setUnlockedTier({...maxTier,redemptionCode:code,repeat:true}); setStep("tier"); recordRedemption(maxTier.reward); setBusy(false); return; }
+      const key = `stamps_${slug}_${email.toLowerCase()}`;
+      const lastTime = localStorage.getItem(`${key}_last`);
+      const now = Date.now();
+      const COOLDOWN = 4*60*60*1000;
+      
+      if (lastTime && now - parseInt(lastTime) < COOLDOWN) {
+        const hoursLeft = Math.ceil((COOLDOWN - (now - parseInt(lastTime)))/3600000);
+        setErr(`Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn another stamp`);
+        setBusy(false);
+        return;
       }
-      if (!tiers&&newStamps>=goal) { const code=`${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; localStorage.setItem(key,"0"); localStorage.removeItem(`${key}_last`); setRedeemCode(code); setStamps(0); setStep("redeem"); recordRedemption(reward); }
-      else { localStorage.setItem(key,newStamps.toString()); localStorage.setItem(`${key}_last`,now.toString()); setStamps(newStamps); if(name) localStorage.setItem(`${key}_name`,name); if(refEnabled){const code=btoa(email.toLowerCase());setRefLink(`${window.location.origin}${window.location.pathname}#/checkin/${slug}?ref=${code}`);} setStep(isNew?"welcome":"stamped"); }
-    } catch(x) { setErr("Something went wrong. Please try again."); }
+
+      const current = parseInt(localStorage.getItem(key)||"0");
+      const newStamps = current + 1;
+      
+      if (tiers && tiers.length > 0) {
+        const newlyUnlocked = tiers.find(t=>t.stamps===newStamps);
+        if (newlyUnlocked) {
+          const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+          const maxTier = tiers[tiers.length-1];
+          const isGold = newlyUnlocked.stamps === maxTier.stamps;
+          localStorage.setItem(key, isGold ? "0" : newStamps.toString());
+          localStorage.setItem(`${key}_last`, now.toString());
+          if (isGold) localStorage.setItem(`${key}_gold`, "true");
+          if (name) localStorage.setItem(`${key}_name`, name);
+          setRedeemCode(code);
+          setStamps(isGold ? 0 : newStamps);
+          setUnlockedTier({...newlyUnlocked, redemptionCode:code, isGold});
+          recordRedemption(newlyUnlocked.reward);
+          setStep("tier");
+          setBusy(false);
+          return;
+        }
+      }
+
+      if (newStamps >= goal) {
+        const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+        localStorage.setItem(key, "0");
+        localStorage.setItem(`${key}_last`, now.toString());
+        if (name) localStorage.setItem(`${key}_name`, name);
+        setRedeemCode(code);
+        setStamps(0);
+        recordRedemption(reward);
+        setStep("success");
+      } else {
+        localStorage.setItem(key, newStamps.toString());
+        localStorage.setItem(`${key}_last`, now.toString());
+        if (name) localStorage.setItem(`${key}_name`, name);
+        setStamps(newStamps);
+        recordRedemption("stamp");
+        setStep("success");
+      }
+    } catch (e) {
+      setErr("Error: " + e.message);
+    }
     setBusy(false);
   };
 
-  if (!slug) return (
-    <div style={{ minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
-      <div style={{ textAlign:"center" }}><div style={{ fontSize:40,marginBottom:16 }}>⚠️</div><div style={{ fontSize:18,fontWeight:700,color:C.t1,marginBottom:8 }}>Invalid QR code</div><div style={{ fontSize:14,color:C.t4 }}>This QR code is not linked to a business.</div></div>
-    </div>
-  );
+  const getLogoInitials = () => bizName.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
   return (
-    <div style={{ minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20 }}>
-      <div style={{ marginBottom:32,textAlign:"center" }}><Wordmark/><div style={{ fontSize:13,color:C.t4,marginTop:6 }}>Loyalty Rewards</div></div>
-      <div style={{ width:"100%",maxWidth:400,animation:"fadeUp .28s ease" }}>
-        <div style={{ textAlign:"center",marginBottom:24 }}>
-          <div style={{ fontSize:22,fontWeight:800,color:C.t1,letterSpacing:"-.02em" }}>{bizName}</div>
-          <div style={{ fontSize:13,color:C.t4,marginTop:4 }}>Loyalty Rewards Program</div>
+    <div style={{ background:C.bg, minHeight:"100vh", padding:`${px}px`, paddingBottom:px+24, overflowX:"hidden" }}>
+      <div style={{ display:"flex",justifyContent:"center",marginBottom:20 }}>
+        <div style={{ width:60,height:60,borderRadius:12,background:C.vi,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:900,color:"#000" }}>
+          {bizLogo ? <img src={bizLogo} style={{width:"100%",height:"100%",borderRadius:12,objectFit:"cover"}}/> : getLogoInitials()}
         </div>
+      </div>
 
-        {step==="enter" && (
-          <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
-            <div style={{ textAlign:"center",marginBottom:20 }}>
-              <div style={{ fontSize:36,marginBottom:8 }}>🎯</div>
-              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Check in to earn a stamp</div>
-              <div style={{ fontSize:13,color:C.t4 }}>Collect {goal} stamps and get {reward}</div>
+      <div style={{ textAlign:"center",marginBottom:28 }}>
+        <div style={{ fontSize:13,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:8 }}>{programName}</div>
+        <h1 style={{ fontSize:`clamp(18px,4vw,24px)`,fontWeight:900,color:C.t1,marginBottom:4 }}>Rewards for coming back.</h1>
+        <p style={{ fontSize:13,color:C.t4,marginBottom:16 }}>You're checking in at</p>
+        <div style={{ fontSize:18,fontWeight:800,color:C.t1,marginBottom:6 }}>{bizName}</div>
+        {(bizLocation || bizAddress) && (
+          <div style={{ fontSize:12,color:C.t4,display:"flex",alignItems:"center",justifyContent:"center",gap:6,flexWrap:"wrap" }}>
+            {bizLocation && <span>📍 {bizLocation}</span>}
+            {bizAddress && <span>·</span>}
+            {bizAddress && <span>{bizAddress}</span>}
+          </div>
+        )}
+      </div>
+
+      {featureImage && (
+        <div style={{ width:"100%",maxWidth:400,margin:"0 auto 20px",borderRadius:12,overflow:"hidden",background:C.bg2,border:`1px solid ${C.b2}` }}>
+          <img src={featureImage} style={{width:"100%",height:120,objectFit:"cover"}}/>
+        </div>
+      )}
+
+      {step==="checkin" && (
+        <>
+          <div style={{ textAlign:"center",marginBottom:24 }}>
+            <div style={{ fontSize:12,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:10 }}>CHECK IN TO EARN</div>
+            <p style={{ fontSize:14,color:C.t3,marginBottom:8,lineHeight:1.6 }}>
+              Check in today to earn 1 stamp. Collect {goal} to unlock {reward}.
+            </p>
+          </div>
+
+          <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:14,padding:"16px",marginBottom:20 }}>
+            {[
+              {icon:"✓",text:"Earn rewards for qualifying visits"},
+              {icon:"✦",text:"Access member-only offers and specials"},
+              {icon:"🔒",text:"No app download required"}
+            ].map((b,i)=>(
+              <div key={i} style={{ display:"flex",gap:12,alignItems:"flex-start",paddingBottom:i<2?12:0,borderBottom:i<2?`1px solid ${C.b3}`:"none",marginBottom:i<2?12:0 }}>
+                <span style={{fontSize:14,color:C.vi,flexShrink:0,fontWeight:700}}>{b.icon}</span>
+                <span style={{fontSize:13,color:C.t3,lineHeight:1.5}}>{b.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:20 }}>
+            <div>
+              <input
+                type="email"
+                value={email}
+                onChange={e=>setEmail(e.target.value)}
+                placeholder="your@email.com"
+                style={{...inp,width:"100%",padding:"12px 14px",fontSize:14,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:10}}
+                onFocus={e=>e.target.style.borderColor=C.vi}
+                onBlur={e=>e.target.style.borderColor=C.b2}
+              />
             </div>
-            <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div><label style={lbl}>Your email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} required onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-              {!localStorage.getItem(`stamps_${slug}_${email.toLowerCase()}_name`)&&email&&(
-                <div><label style={lbl}>Your name (optional)</label><input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="First name" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
+            <div>
+              <input
+                type="text"
+                value={name}
+                onChange={e=>setName(e.target.value)}
+                placeholder="Your name (optional)"
+                style={{...inp,width:"100%",padding:"12px 14px",fontSize:14,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:10}}
+                onFocus={e=>e.target.style.borderColor=C.vi}
+                onBlur={e=>e.target.style.borderColor=C.b2}
+              />
+            </div>
+            {err && <div style={{fontSize:13,color:C.err,background:C.err+"0c",border:`1px solid ${C.err}22`,borderRadius:8,padding:"10px",textAlign:"center"}}>{err}</div>}
+            <button type="submit" disabled={busy} style={{...btnP(),fontSize:14,padding:"14px",width:"100%"}}>{busy?"Checking in...":"Check in & earn stamp"}</button>
+          </form>
+
+          <div style={{ textAlign:"center",fontSize:12,color:C.t4 }}>
+            Already a member? <span onClick={()=>setStep("member")} style={{color:C.vi,fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>Open my rewards</span>
+          </div>
+        </>
+      )}
+
+      {(step==="success" || step==="tier") && (
+        <div style={{ textAlign:"center",maxWidth:340,margin:"0 auto" }}>
+          <div style={{ fontSize:48,marginBottom:16 }}>🎉</div>
+          {step==="tier" && unlockedTier ? (
+            <>
+              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:8}}>Tier Unlocked!</h2>
+              <p style={{fontSize:14,color:C.t3,marginBottom:16}}>{unlockedTier.level}: {unlockedTier.reward}</p>
+              {unlockedTier.isGold && (
+                <>
+                  <div style={{background:C.vi,borderRadius:12,padding:"20px",marginBottom:16}}>
+                    <div style={{fontSize:12,color:"#000",marginBottom:8,fontWeight:700}}>Your redemption code</div>
+                    <div style={{fontSize:20,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".1em"}}>{redeemCode}</div>
+                  </div>
+                  <p style={{fontSize:13,color:C.t4,marginBottom:16}}>Show this code at the counter to claim your reward</p>
+                </>
               )}
-              {err && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{err}</div>}
-              <button type="submit" disabled={busy} style={{ ...btnP(C.vi,true),fontSize:15,padding:"13px",opacity:busy?.7:1 }}>{busy?"Checking in…":"Check in & earn stamp ✓"}</button>
-            </form>
-            <div style={{ marginTop:14,background:C.bg3,borderRadius:8,padding:"10px 12px" }}>
-              <div style={{ fontSize:11,color:C.t4,lineHeight:1.6,textAlign:"center" }}>🔒 <strong style={{ color:C.t3 }}>Your privacy is protected.</strong> Stamps are stored privately on your device. No account required.</div>
-            </div>
-            <button onClick={()=>setStep("restore")} style={{ width:"100%",marginTop:10,background:"none",border:"none",color:C.t4,fontSize:12,cursor:"pointer",padding:"6px",textDecoration:"underline" }}>Have a restore code? Tap here</button>
-          </div>
-        )}
+            </>
+          ) : (
+            <>
+              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:8}}>Stamp earned!</h2>
+              <p style={{fontSize:14,color:C.t3,marginBottom:16}}>{stamps}/{goal} stamps collected</p>
+              {stamps >= goal && (
+                <>
+                  <div style={{background:C.vi,borderRadius:12,padding:"20px",marginBottom:16}}>
+                    <div style={{fontSize:12,color:"#000",marginBottom:8,fontWeight:700}}>Your reward code</div>
+                    <div style={{fontSize:20,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".1em"}}>{redeemCode}</div>
+                  </div>
+                  <p style={{fontSize:13,color:C.t4,marginBottom:16}}>Show this code at the counter to claim your {reward}</p>
+                </>
+              )}
+            </>
+          )}
+          <button onClick={()=>{setStep("checkin");setEmail("");setName("");setErr("");}} style={{...btnP(),fontSize:14,padding:"12px 24px"}}>Check in again</button>
+        </div>
+      )}
 
-        {(step==="stamped"||step==="welcome") && (
-          <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>{step==="welcome"?"🎉":"⭐"}</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{step==="welcome"?`Welcome${name?`, ${name}`:""}!`:"Stamp added!"}</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>{step==="welcome"?"You've earned your first stamp!":"You now have"} {stamps} of {goal} stamps</div>
-            <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:20 }}>
-              {Array.from({length:Math.min(goal,10)}).map((_,i)=>(
-                <div key={i} style={{ width:32,height:32,borderRadius:"50%",background:i<Math.min(stamps,10)?C.vi:C.bg3,border:`2px solid ${i<Math.min(stamps,10)?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>{i<Math.min(stamps,10)?"⭐":""}</div>
-              ))}
-              {goal>10 && <div style={{ fontSize:11,color:C.t4,width:"100%",marginTop:4 }}>{stamps} of {goal} total stamps</div>}
-            </div>
-            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"12px 16px",marginBottom:16 }}>
-              <div style={{ fontSize:13,color:C.viL,fontWeight:600 }}>{goal-stamps} more visit{goal-stamps!==1?"s":""} until your {reward}!</div>
-            </div>
-            <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,padding:"14px",marginBottom:14,textAlign:"left" }}>
-              <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>💾 Save your progress</div>
-              <div style={{ fontSize:12,color:C.t4,marginBottom:10,lineHeight:1.6 }}>Stamps live on this device. Save them so you never lose your progress if you switch phones.</div>
-              <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                <button onClick={()=>setStep("save-email")} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>📧 Save with email — sync across devices</button>
-                <button onClick={()=>{ const payload=`${email.toLowerCase()}:${slug}:${stamps}:${Date.now()}`; const code=btoa(payload).replace(/[+=\/]/g,"").slice(0,20).toUpperCase(); localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_code`,code); setRestoreCode(code); setStep("show-code"); }} style={{ ...btnG(true),fontSize:13,padding:"9px" }}>🔑 Get a private backup code</button>
-              </div>
-            </div>
-            {refLink && (
-              <div style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:"12px",marginBottom:14,textAlign:"left" }}>
-                <div style={{ fontSize:13,fontWeight:700,color:C.t1,marginBottom:4 }}>🤝 Refer a friend — earn a bonus stamp!</div>
-                <div style={{ fontSize:12,color:C.t4,marginBottom:8 }}>Share your link. When a friend checks in for the first time you both earn {refBonus}.</div>
-                <button onClick={()=>{ if(navigator.share){navigator.share({title:`Join ${bizName} Rewards`,text:`Join me at ${bizName} — earn free rewards!`,url:refLink});}else{navigator.clipboard.writeText(refLink);alert("Referral link copied!");}}} style={{ ...btnP(C.vi,true),fontSize:13,padding:"9px" }}>Share referral link →</button>
-              </div>
-            )}
-            <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px",width:"100%" }}>Done for now</button>
+      {step==="member" && (
+        <div style={{ maxWidth:340,margin:"0 auto" }}>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{fontSize:32,marginBottom:12}}>⭐</div>
+            <h2 style={{fontSize:18,fontWeight:900,color:C.t1,marginBottom:8}}>My rewards</h2>
           </div>
-        )}
+          <div style={{background:C.bg2,borderRadius:12,padding:"20px",textAlign:"center",border:`1px solid ${C.b2}`,marginBottom:16}}>
+            <div style={{fontSize:12,color:C.t4,marginBottom:8}}>Current stamps</div>
+            <div style={{fontSize:36,fontWeight:900,color:C.vi}}>{stamps}</div>
+            <div style={{fontSize:12,color:C.t4,marginTop:8}}>out of {goal}</div>
+          </div>
+          <p style={{fontSize:13,color:C.t3,textAlign:"center",marginBottom:20}}>Earn {goal-stamps} more to unlock {reward}</p>
+          <button onClick={()=>setStep("checkin")} style={{...btnP(),fontSize:14,padding:"12px",width:"100%"}}>Check in now</button>
+        </div>
+      )}
 
-        {step==="save-email" && (
-          <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40` }}>
-            <div style={{ textAlign:"center",marginBottom:20 }}>
-              <div style={{ fontSize:36,marginBottom:8 }}>📧</div>
-              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Save with email</div>
-              <div style={{ fontSize:13,color:C.t4,lineHeight:1.6 }}>We'll email you a restore code so your stamps follow you to any device.</div>
-            </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div><label style={lbl}>Your email</label><input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-              {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
-              <button onClick={async()=>{ if(!saveEmail){setSaveErr("Please enter your email.");return;} setSaveBusy(true);setSaveErr(""); try{ const res=await fetch("/.netlify/functions/save-stamps",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:saveEmail,slug,bizName,stamps,goal,reward})}); const data=await res.json(); if(data.success){localStorage.setItem(`stamps_${slug}_${email.toLowerCase()}_saved_email`,saveEmail);setRestoreCode(data.restoreCode);setStep("saved");}else setSaveErr("Something went wrong. Try again."); }catch(e){setSaveErr("Something went wrong. Try again.");} setSaveBusy(false); }} disabled={saveBusy} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px",opacity:saveBusy?.7:1 }}>{saveBusy?"Sending…":"Send restore code →"}</button>
-              <button onClick={()=>setStep("stamped")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
-            </div>
-          </div>
-        )}
-
-        {step==="show-code" && (
-          <div style={{ ...card(true),padding:24,border:`1px solid ${C.vi}40`,textAlign:"center" }}>
-            <div style={{ fontSize:36,marginBottom:12 }}>🔑</div>
-            <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:8 }}>Your backup code</div>
-            <div style={{ fontSize:13,color:C.t4,marginBottom:20,lineHeight:1.6 }}>Save this somewhere safe. Use it to restore your stamps on any device.</div>
-            <div style={{ background:C.bg3,border:`2px dashed ${C.vi}`,borderRadius:12,padding:"20px",marginBottom:20 }}>
-              <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>YOUR BACKUP CODE</div>
-              <div style={{ fontSize:22,fontWeight:900,color:C.vi,letterSpacing:".08em",fontFamily:"DM Mono,monospace" }}>{restoreCode}</div>
-            </div>
-            <button onClick={()=>{navigator.clipboard.writeText(restoreCode);alert("Code copied!");}} style={{ ...btnP(C.vi,true),fontSize:13,padding:"11px",marginBottom:10 }}>Copy code</button>
-            <button onClick={()=>setStep("stamped")} style={{ ...btnG(true),fontSize:13,padding:"10px",width:"100%" }}>Done</button>
-          </div>
-        )}
-
-        {step==="saved" && (
-          <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center" }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>✅</div>
-            <div style={{ fontSize:20,fontWeight:800,color:C.t1,marginBottom:8 }}>Stamps saved!</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20,lineHeight:1.6 }}>We emailed your restore code to <strong style={{ color:C.t2 }}>{saveEmail}</strong>. Check your inbox.</div>
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Done</button>
-          </div>
-        )}
-
-        {step==="restore" && (
-          <div style={{ ...card(true),padding:24,border:`1px solid ${C.b2}` }}>
-            <div style={{ textAlign:"center",marginBottom:20 }}>
-              <div style={{ fontSize:36,marginBottom:8 }}>🔄</div>
-              <div style={{ fontSize:17,fontWeight:700,color:C.t1,marginBottom:6 }}>Restore your stamps</div>
-              <div style={{ fontSize:13,color:C.t4 }}>Enter your email and restore code.</div>
-            </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-              <div><label style={lbl}>Your email</label><input type="email" value={saveEmail} onChange={e=>setSaveEmail(e.target.value)} placeholder="you@email.com" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}` }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-              <div><label style={lbl}>Restore code</label><input value={restoreInput} onChange={e=>setRestoreInput(e.target.value.toUpperCase())} placeholder="XXXXXXXXXXXXXXXXXXXX" style={{ ...inp,background:C.bg3,border:`1px solid ${C.b2}`,fontFamily:"DM Mono,monospace",letterSpacing:".04em" }} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
-              {saveErr && <div style={{ background:C.err+"15",border:`1px solid ${C.err}30`,borderRadius:8,padding:"10px 13px",color:C.err,fontSize:13 }}>{saveErr}</div>}
-              <button onClick={()=>{ if(!saveEmail||!restoreInput){setSaveErr("Please fill in both fields.");return;} try{ const padded=restoreInput.toLowerCase()+"=".repeat((4-restoreInput.length%4)%4); const decoded=atob(padded); const parts=decoded.split(":"); if(parts[0]===saveEmail.toLowerCase()&&parts[1]===slug){const key=`stamps_${slug}_${saveEmail.toLowerCase()}`;localStorage.setItem(key,parts[2]||"0");setEmail(saveEmail);setStamps(parseInt(parts[2])||0);setSaveErr("");setStep("stamped");}else setSaveErr("Code doesn't match. Please check and try again."); }catch(e){setSaveErr("Invalid restore code. Please check and try again.");} }} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>Restore stamps →</button>
-              <button onClick={()=>setStep("enter")} style={{ ...btnG(true),fontSize:13,padding:"10px" }}>Back</button>
-            </div>
-          </div>
-        )}
-
-        {step==="tier" && unlockedTier && (
-          <div style={{ ...card(true),padding:28,border:`1px solid ${C.vi}40`,textAlign:"center",boxShadow:`0 0 40px ${C.viGlo}` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>{unlockedTier.level==="Bronze"?"🥉":unlockedTier.level==="Silver"?"🥈":"🥇"}</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>{unlockedTier.repeat?"Gold again!":`${unlockedTier.level} achieved!`}</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:20 }}>{unlockedTier.repeat?"You completed another full cycle!":`You've reached ${unlockedTier.stamps} stamps`}</div>
-            <div style={{ background:C.vi+"12",border:`1px solid ${C.vi}25`,borderRadius:10,padding:"16px",marginBottom:unlockedTier.redemptionCode?16:20 }}>
-              <div style={{ fontSize:12,color:C.t4,marginBottom:4 }}>YOUR REWARD</div>
-              <div style={{ fontSize:18,fontWeight:800,color:C.vi }}>{unlockedTier.reward}</div>
-              {!unlockedTier.redemptionCode && <div style={{ fontSize:12,color:C.t4,marginTop:6 }}>Show this screen to redeem</div>}
-            </div>
-            {unlockedTier.redemptionCode && (
-              <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"16px",marginBottom:20 }}>
-                <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
-                <div style={{ fontSize:24,fontWeight:900,color:C.ok,letterSpacing:".1em",fontFamily:"DM Mono,monospace" }}>{unlockedTier.redemptionCode}</div>
-                <div style={{ fontSize:11,color:C.t4,marginTop:8 }}>Show this to the cashier · Your stamp card has reset</div>
-              </div>
-            )}
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.vi,true),fontSize:14,padding:"12px" }}>{unlockedTier.level==="Gold"?"Start new cycle →":"Continue earning →"}</button>
-          </div>
-        )}
-
-        {step==="redeem" && (
-          <div style={{ ...card(true),padding:28,border:`1px solid ${C.ok}40`,textAlign:"center",boxShadow:`0 0 40px rgba(34,197,94,.2)` }}>
-            <div style={{ fontSize:48,marginBottom:12 }}>🏆</div>
-            <div style={{ fontSize:22,fontWeight:800,color:C.t1,marginBottom:6 }}>You earned it!</div>
-            <div style={{ fontSize:14,color:C.t4,marginBottom:24 }}>Show this code to the cashier to claim your {reward}</div>
-            <div style={{ background:C.bg3,border:`2px dashed ${C.ok}`,borderRadius:12,padding:"20px 16px",marginBottom:24 }}>
-              <div style={{ fontSize:11,color:C.t4,marginBottom:6,letterSpacing:".1em" }}>REDEMPTION CODE</div>
-              <div style={{ fontSize:28,fontWeight:900,color:C.ok,letterSpacing:".1em",fontFamily:"DM Mono,monospace" }}>{redeemCode}</div>
-            </div>
-            <div style={{ fontSize:12,color:C.t4,marginBottom:20 }}>Your stamp card has been reset. Start collecting again!</div>
-            <button onClick={()=>setStep("enter")} style={{ ...btnP(C.ok,true),fontSize:14,padding:"12px" }}>Start collecting again</button>
-          </div>
-        )}
+      <div style={{textAlign:"center",marginTop:32,paddingTop:24,borderTop:`1px solid ${C.b1}`}}>
+        <div style={{fontSize:10,color:C.t4}}>Powered by Xhibitur Rewards</div>
       </div>
     </div>
   );
 }
+
 
 function StickerOrderPage() {
   const { user } = useAuth(); const { nav } = useNav();
