@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode:200, headers, body:"" };
 
   try {
-    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName, tiers, refEnabled, refBonus } = JSON.parse(event.body);
+    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName, tiers, refEnabled, refBonus, promoTitle, promoDesc, promoButtonText, promoButtonLink } = JSON.parse(event.body);
 
     if (!slug || !name) return { statusCode:400, headers, body: JSON.stringify({ error:"Slug and name required" }) };
 
