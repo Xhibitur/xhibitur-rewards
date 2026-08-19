@@ -28,16 +28,20 @@ exports.handler = async (event) => {
       .filter(d=>d.url);
 
     const kvValue = JSON.stringify({
-      name,
-      fallback: fixedFallback,
-      destinations: fixedDestinations,
-      rewardGoal: rewardGoal || 10,
-      rewardName: rewardName || "Free item",
-      programName: programName || "",
-      tiers: tiers || null,
-      refEnabled: refEnabled || false,
-      refBonus: refBonus || "1 bonus stamp",
-    });
+  name,
+  fallback: fixedFallback,
+  destinations: fixedDestinations,
+  rewardGoal: rewardGoal || 10,
+  rewardName: rewardName || "Free item",
+  programName: programName || "",
+  tiers: tiers || null,
+  refEnabled: refEnabled || false,
+  refBonus: refBonus || "1 bonus stamp",
+  promoTitle: promoTitle || "",
+  promoDesc: promoDesc || "",
+  promoButtonText: promoButtonText || "",
+  promoButtonLink: promoButtonLink || "",
+});
 
     const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${cleanSlug}`;
 
