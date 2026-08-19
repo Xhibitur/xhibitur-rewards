@@ -27,14 +27,18 @@ exports.handler = async (event) => {
     const data = JSON.parse(await cfRes.text());
 
     return { statusCode:200, headers, body: JSON.stringify({
-      name:        data.name || cleanSlug,
-      rewardGoal:  data.rewardGoal  || 10,
-      rewardName:  data.rewardName  || "Free item",
-      programName: data.programName || "",
-      tiers:       data.tiers       || null,
-      refEnabled:  data.refEnabled  || false,
-      refBonus:    data.refBonus    || "1 bonus stamp",
-    })};
+  name:        data.name || cleanSlug,
+  rewardGoal:  data.rewardGoal  || 10,
+  rewardName:  data.rewardName  || "Free item",
+  programName: data.programName || "",
+  tiers:       data.tiers       || null,
+  refEnabled:  data.refEnabled  || false,
+  refBonus:    data.refBonus    || "1 bonus stamp",
+  promoTitle:  data.promoTitle  || "",
+  promoDesc:   data.promoDesc   || "",
+  promoButtonText:  data.promoButtonText  || "",
+  promoButtonLink:  data.promoButtonLink  || "",
+})};
 
   } catch(err) {
     return { statusCode:200, headers, body: JSON.stringify({ rewardGoal:10, rewardName:"Free item" }) };
