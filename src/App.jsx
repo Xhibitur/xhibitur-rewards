@@ -1155,15 +1155,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                 <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
                 <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
               </div>
-              <div style={{ background:C.cy+"0c",border:`1px solid ${C.cy}22`,borderRadius:10,padding:"14px",marginBottom:16 }}>
-                <div style={{ fontSize:12,fontWeight:700,color:C.cy,marginBottom:10 }}>🖼️ OPTIONAL LOGO IMAGE</div>
-                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                  {logoImage && <div style={{width:60,height:60,borderRadius:10,background:C.bg3,border:`1px solid ${C.b2}`,objectFit:"cover",backgroundImage:`url(${logoImage})`,backgroundSize:"cover",backgroundPosition:"center",marginBottom:8}}/>}
-                  <input type="file" accept="image/*" onChange={e=>{if(e.target.files?.[0]){const reader=new FileReader();reader.onload=r=>setLogoImage(r.target.result);reader.readAsDataURL(e.target.files[0]);}}} style={{fontSize:13,padding:"8px"}} placeholder="Upload a logo"/>
-                  {logoImage && <button onClick={()=>setLogoImage("")} style={{...btnG(),fontSize:12,padding:"6px 12px"}}>Remove image</button>}
-                  <div style={{fontSize:11,color:C.t4}}>Replaces the initials (XB) on the check-in page</div>
-                </div>
-              </div>
+
               <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:"14px",marginBottom:16 }}>
                 <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>📢 OPTIONAL PROMOTIONAL SECTION</div>
                 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
