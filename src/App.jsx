@@ -1113,6 +1113,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
   const [promoDesc,setPromoDesc]=useState(init?.promoDesc||"");
   const [promoButtonText,setPromoButtonText]=useState(init?.promoButtonText||"");
   const [promoButtonLink,setPromoButtonLink]=useState(init?.promoButtonLink||"");
+  const [logoImage,setLogoImage]=useState(init?.logoImage||"");
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
@@ -1127,7 +1128,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
     const rewardSettings = prog ? { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name } : { goal:10, reward:"Free item", programName:"" };
     setSaving(true);
     try {
-      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink }) });
+      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink, logoImage }) });
     } catch(e) { console.error("KV save failed:", e); }
     setSaving(false);
     onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:autoFallback, fg, linkedProgram });
@@ -1155,7 +1156,16 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                 <div style={{ fontSize:12,color:C.em,fontWeight:600,marginBottom:2 }}>✓ Automatic setup</div>
                 <div style={{ fontSize:12,color:C.t4 }}>Your QR code URL is assigned automatically when you save. No technical setup required.</div>
               </div>
-              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:"14px" }}>
+              <div style={{ background:C.cy+"0c",border:`1px solid ${C.cy}22`,borderRadius:10,padding:"14px",marginBottom:16 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:C.cy,marginBottom:10 }}>🖼️ OPTIONAL LOGO IMAGE</div>
+                <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+                  {logoImage && <div style={{width:60,height:60,borderRadius:10,background:C.bg3,border:`1px solid ${C.b2}`,objectFit:"cover",backgroundImage:`url(${logoImage})`,backgroundSize:"cover",backgroundPosition:"center",marginBottom:8}}/>}
+                  <input type="file" accept="image/*" onChange={e=>{if(e.target.files?.[0]){const reader=new FileReader();reader.onload=r=>setLogoImage(r.target.result);reader.readAsDataURL(e.target.files[0]);}}} style={{fontSize:13,padding:"8px"}} placeholder="Upload a logo"/>
+                  {logoImage && <button onClick={()=>setLogoImage("")} style={{...btnG(),fontSize:12,padding:"6px 12px"}}>Remove image</button>}
+                  <div style={{fontSize:11,color:C.t4}}>Replaces the initials (XB) on the check-in page</div>
+                </div>
+              </div>
+              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:"14px",marginBottom:16 }}>
                 <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>📢 OPTIONAL PROMOTIONAL SECTION</div>
                 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
                   <div>
@@ -1674,6 +1684,7 @@ function CheckInPage() {
         if (data.promoDesc) setPromoDesc(data.promoDesc);
         if (data.promoButtonText) setPromoButtonText(data.promoButtonText);
         if (data.promoButtonLink) setPromoButtonLink(data.promoButtonLink);
+        if (data.logoImage) setBizLogo(data.logoImage);
       }).catch(()=>{});
   },[slug]);
 
@@ -1849,8 +1860,16 @@ function CheckInPage() {
             </>
           ) : (
             <>
-              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:8}}>Stamp earned!</h2>
-              <p style={{fontSize:14,color:C.t3,marginBottom:16}}>{stamps}/{goal} stamps collected</p>
+              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:20}}>Stamp earned!</h2>
+              <div style={{marginBottom:20}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16,maxWidth:240,margin:"0 auto 16px"}}>
+                  {Array.from({length:goal}).map((_,i)=>(
+                    <div key={i} style={{aspectRatio:"1",borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:i<stamps?"#000":C.t4,transition:"all .3s"}}>{i<stamps?"✓":i+1}</div>
+                  ))}
+                </div>
+                <div style={{fontSize:13,color:C.t3,textAlign:"center"}}>{stamps}/{goal} stamps collected</div>
+                <div style={{fontSize:12,color:C.t4,textAlign:"center",marginTop:6}}>{goal-stamps} more to unlock {reward}</div>
+              </div>
               {stamps >= goal && (
                 <>
                   <div style={{background:C.vi,borderRadius:12,padding:"20px",marginBottom:16}}>
@@ -1873,9 +1892,13 @@ function CheckInPage() {
             <h2 style={{fontSize:18,fontWeight:900,color:C.t1,marginBottom:8}}>My rewards</h2>
           </div>
           <div style={{background:C.bg2,borderRadius:12,padding:"20px",textAlign:"center",border:`1px solid ${C.b2}`,marginBottom:16}}>
-            <div style={{fontSize:12,color:C.t4,marginBottom:8}}>Current stamps</div>
-            <div style={{fontSize:36,fontWeight:900,color:C.vi}}>{stamps}</div>
-            <div style={{fontSize:12,color:C.t4,marginTop:8}}>out of {goal}</div>
+            <div style={{fontSize:12,color:C.t4,marginBottom:12}}>Your stamp progress</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16,maxWidth:240,margin:"0 auto 16px"}}>
+              {Array.from({length:goal}).map((_,i)=>(
+                <div key={i} style={{aspectRatio:"1",borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:i<stamps?"#000":C.t4}}>{i<stamps?"✓":i+1}</div>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:C.t3}}>{stamps}/{goal} stamps</div>
           </div>
           <p style={{fontSize:13,color:C.t3,textAlign:"center",marginBottom:20}}>Earn {goal-stamps} more to unlock {reward}</p>
           <button onClick={()=>setStep("checkin")} style={{...btnP(),fontSize:14,padding:"12px",width:"100%"}}>Check in now</button>
