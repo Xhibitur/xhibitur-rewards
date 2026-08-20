@@ -1160,7 +1160,21 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                 <div style={{ fontSize:12,fontWeight:700,color:C.cy,marginBottom:10 }}>🖼️ OPTIONAL LOGO IMAGE</div>
                 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
                   {logoImage && <div style={{width:60,height:60,borderRadius:10,background:C.bg3,border:`1px solid ${C.b2}`,objectFit:"cover",backgroundImage:`url(${logoImage})`,backgroundSize:"cover",backgroundPosition:"center",marginBottom:8}}/>}
-                  <input type="file" accept="image/*" onChange={e=>{if(e.target.files?.[0]){const reader=new FileReader();reader.onload=r=>setLogoImage(r.target.result);reader.readAsDataURL(e.target.files[0]);}}} style={{fontSize:13,padding:"8px"}} placeholder="Upload a logo"/>
+                 <input 
+  type="file" 
+  accept="image/*" 
+  onChange={(e)=>{
+    const file=e.target.files?.[0];
+    if(file){
+      const reader=new FileReader();
+      reader.onload=(evt)=>{
+        setLogoImage(evt.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }} 
+  style={{fontSize:13,padding:"8px",borderRadius:8,border:`1px solid ${C.b2}`,width:"100%"}}
+/>
                   {logoImage && <button onClick={()=>setLogoImage("")} style={{...btnG(),fontSize:12,padding:"6px 12px"}}>Remove image</button>}
                   <div style={{fontSize:11,color:C.t4}}>Replaces the initials (XB) on the check-in page</div>
                 </div>
