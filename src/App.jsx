@@ -1113,7 +1113,6 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
   const [promoDesc,setPromoDesc]=useState(init?.promoDesc||"");
   const [promoButtonText,setPromoButtonText]=useState(init?.promoButtonText||"");
   const [promoButtonLink,setPromoButtonLink]=useState(init?.promoButtonLink||"");
-  const [logoImage,setLogoImage]=useState(init?.logoImage||"");
   const w=useW(); const mob=w<640;
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
@@ -1128,7 +1127,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
     const rewardSettings = prog ? { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name } : { goal:10, reward:"Free item", programName:"" };
     setSaving(true);
     try {
-      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink, logoImage }) });
+      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink }) });
     } catch(e) { console.error("KV save failed:", e); }
     setSaving(false);
     onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:autoFallback, fg, linkedProgram });
@@ -1160,21 +1159,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                 <div style={{ fontSize:12,fontWeight:700,color:C.cy,marginBottom:10 }}>🖼️ OPTIONAL LOGO IMAGE</div>
                 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
                   {logoImage && <div style={{width:60,height:60,borderRadius:10,background:C.bg3,border:`1px solid ${C.b2}`,objectFit:"cover",backgroundImage:`url(${logoImage})`,backgroundSize:"cover",backgroundPosition:"center",marginBottom:8}}/>}
-                 <input 
-  type="file" 
-  accept="image/*" 
-  onChange={(e)=>{
-    const file=e.target.files?.[0];
-    if(file){
-      const reader=new FileReader();
-      reader.onload=(evt)=>{
-        setLogoImage(evt.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  }} 
-  style={{fontSize:13,padding:"8px",borderRadius:8,border:`1px solid ${C.b2}`,width:"100%"}}
-/>
+                  <input type="file" accept="image/*" onChange={e=>{if(e.target.files?.[0]){const reader=new FileReader();reader.onload=r=>setLogoImage(r.target.result);reader.readAsDataURL(e.target.files[0]);}}} style={{fontSize:13,padding:"8px"}} placeholder="Upload a logo"/>
                   {logoImage && <button onClick={()=>setLogoImage("")} style={{...btnG(),fontSize:12,padding:"6px 12px"}}>Remove image</button>}
                   <div style={{fontSize:11,color:C.t4}}>Replaces the initials (XB) on the check-in page</div>
                 </div>
@@ -1649,20 +1634,17 @@ function AccountPage() {
 function CheckInPage() {
   const { nav } = useNav();
   const w=useW(); const mob=w<640; const tab=w<1024;
-  const px = mob?16:20;
+  const px = mob?16:24;
   const slug = window.location.hash.replace(/^#\/?checkin\/?/,"").split("?")[0] || "";
   
-  // State
-  const [step,setStep]=useState("checkin"); // checkin, success, member
+  const [step,setStep]=useState("checkin");
   const [email,setEmail]=useState("");
   const [name,setName]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState("");
   const [redeemCode,setRedeemCode]=useState("");
   
-  // Business/Program data
   const [bizName,setBizName]=useState(slug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-  const [bizLogo,setBizLogo]=useState(null);
   const [bizLocation,setBizLocation]=useState("");
   const [bizAddress,setBizAddress]=useState("");
   const [featureImage,setFeatureImage]=useState(null);
@@ -1672,14 +1654,11 @@ function CheckInPage() {
   const [stamps,setStamps]=useState(0);
   const [tiers,setTiers]=useState(null);
   const [unlockedTier,setUnlockedTier]=useState(null);
-  
-  // Promotional section
   const [promoTitle,setPromoTitle]=useState("");
   const [promoDesc,setPromoDesc]=useState("");
   const [promoButtonText,setPromoButtonText]=useState("");
   const [promoButtonLink,setPromoButtonLink]=useState("");
   
-  // Load QR data
   useEffect(()=>{
     if (!slug) return;
     fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email:"", reward:"__scan__" }) }).catch(()=>{});
@@ -1698,7 +1677,6 @@ function CheckInPage() {
         if (data.promoDesc) setPromoDesc(data.promoDesc);
         if (data.promoButtonText) setPromoButtonText(data.promoButtonText);
         if (data.promoButtonLink) setPromoButtonLink(data.promoButtonLink);
-        if (data.logoImage) setBizLogo(data.logoImage);
       }).catch(()=>{});
   },[slug]);
 
@@ -1773,166 +1751,176 @@ function CheckInPage() {
   const getLogoInitials = () => bizName.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
   return (
-    <div style={{ background:C.bg, minHeight:"100vh", padding:`${px}px`, paddingBottom:px+24, overflowX:"hidden" }}>
-      <div style={{ display:"flex",justifyContent:"center",marginBottom:20 }}>
-        <div style={{ width:60,height:60,borderRadius:12,background:C.vi,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:900,color:"#000" }}>
-          {bizLogo ? <img src={bizLogo} style={{width:"100%",height:"100%",borderRadius:12,objectFit:"cover"}}/> : getLogoInitials()}
+    <div style={{ background:`linear-gradient(135deg, ${C.bg} 0%, ${C.bg2} 100%)`, minHeight:"100vh", padding:`${px}px`, paddingBottom:px+32, overflowX:"hidden" }}>
+      {/* Header/Hero Section */}
+      <div style={{ marginBottom:32, textAlign:"center" }}>
+        <div style={{ display:"inline-block", marginBottom:16 }}>
+          <div style={{ width:80,height:80,borderRadius:16,background:C.vi,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:"#000",boxShadow:`0 16px 40px ${C.vi}40` }}>
+            {getLogoInitials()}
+          </div>
         </div>
-      </div>
-
-      <div style={{ textAlign:"center",marginBottom:28 }}>
-        <div style={{ fontSize:13,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:8 }}>{programName}</div>
-        <h1 style={{ fontSize:`clamp(18px,4vw,24px)`,fontWeight:900,color:C.t1,marginBottom:4 }}>Rewards for coming back.</h1>
-        <p style={{ fontSize:13,color:C.t4,marginBottom:16 }}>You're checking in at</p>
-        <div style={{ fontSize:18,fontWeight:800,color:C.t1,marginBottom:6 }}>{bizName}</div>
+        <h1 style={{ fontSize:`clamp(22px,5vw,28px)`,fontWeight:900,color:C.t1,marginBottom:8,letterSpacing:"-0.02em" }}>You're checking in</h1>
+        <div style={{ fontSize:18,fontWeight:800,color:C.vi,marginBottom:4 }}>{bizName}</div>
         {(bizLocation || bizAddress) && (
-          <div style={{ fontSize:12,color:C.t4,display:"flex",alignItems:"center",justifyContent:"center",gap:6,flexWrap:"wrap" }}>
+          <div style={{ fontSize:13,color:C.t4,marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6,flexWrap:"wrap" }}>
             {bizLocation && <span>📍 {bizLocation}</span>}
-            {bizAddress && <span>·</span>}
+            {bizAddress && bizLocation && <span>·</span>}
             {bizAddress && <span>{bizAddress}</span>}
           </div>
         )}
       </div>
 
+      {/* Feature Image */}
       {featureImage && (
-        <div style={{ width:"100%",maxWidth:400,margin:"0 auto 20px",borderRadius:12,overflow:"hidden",background:C.bg2,border:`1px solid ${C.b2}` }}>
-          <img src={featureImage} style={{width:"100%",height:120,objectFit:"cover"}}/>
+        <div style={{ width:"100%",maxWidth:420,margin:"0 auto 28px",borderRadius:16,overflow:"hidden",background:C.bg2,border:`1px solid ${C.b2}`,boxShadow:`0 8px 24px ${C.bg4}` }}>
+          <img src={featureImage} style={{width:"100%",height:140,objectFit:"cover"}}/>
         </div>
       )}
 
+      {/* Main Content */}
       {step==="checkin" && (
         <>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:10 }}>CHECK IN TO EARN</div>
-            <p style={{ fontSize:14,color:C.t3,marginBottom:8,lineHeight:1.6 }}>
-              Check in today to earn 1 stamp. Collect {goal} to unlock {reward}.
+          {/* Program Info Card */}
+          <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:16,padding:"20px",marginBottom:24,boxShadow:`0 4px 16px ${C.bg4}` }}>
+            <div style={{ fontSize:12,fontWeight:700,color:C.vi,letterSpacing:".08em",marginBottom:8,textTransform:"uppercase" }}>Earn rewards</div>
+            <p style={{ fontSize:15,color:C.t3,lineHeight:1.6,marginBottom:0 }}>
+              Check in today to earn 1 stamp. Collect <strong style={{color:C.t1}}>{goal}</strong> to unlock <strong style={{color:C.vi}}>{reward}</strong>.
             </p>
           </div>
 
-          <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:14,padding:"16px",marginBottom:20 }}>
+          {/* Benefits */}
+          <div style={{ background:`${C.vi}08`,borderRadius:16,padding:"20px",marginBottom:24,border:`1px solid ${C.vi}22` }}>
             {[
-              {icon:"✓",text:"Earn rewards for qualifying visits"},
-              {icon:"✦",text:"Access member-only offers and specials"},
-              {icon:"🔒",text:"No app download required"}
+              {icon:"⭐",text:"Earn rewards for every visit"},
+              {icon:"🎁",text:"Unlock exclusive member benefits"},
+              {icon:"📱",text:"No app download needed"}
             ].map((b,i)=>(
-              <div key={i} style={{ display:"flex",gap:12,alignItems:"flex-start",paddingBottom:i<2?12:0,borderBottom:i<2?`1px solid ${C.b3}`:"none",marginBottom:i<2?12:0 }}>
-                <span style={{fontSize:14,color:C.vi,flexShrink:0,fontWeight:700}}>{b.icon}</span>
-                <span style={{fontSize:13,color:C.t3,lineHeight:1.5}}>{b.text}</span>
+              <div key={i} style={{ display:"flex",gap:14,alignItems:"flex-start",paddingBottom:i<2?14:0,marginBottom:i<2?14:0,borderBottom:i<2?`1px solid ${C.vi}22`:"none" }}>
+                <span style={{fontSize:18,flexShrink:0}}>{b.icon}</span>
+                <span style={{fontSize:14,color:C.t3,lineHeight:1.5,fontWeight:500}}>{b.text}</span>
               </div>
             ))}
           </div>
 
+          {/* Email Form */}
           <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:20 }}>
             <div>
+              <label style={{ fontSize:12,fontWeight:600,color:C.t4,display:"block",marginBottom:8 }}>Email address</label>
               <input
                 type="email"
                 value={email}
                 onChange={e=>setEmail(e.target.value)}
-                placeholder="your@email.com"
-                style={{...inp,width:"100%",padding:"12px 14px",fontSize:14,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:10}}
+                placeholder="you@email.com"
+                style={{...inp,width:"100%",padding:"13px 16px",fontSize:14,background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,fontWeight:500}}
                 onFocus={e=>e.target.style.borderColor=C.vi}
                 onBlur={e=>e.target.style.borderColor=C.b2}
               />
             </div>
             <div>
+              <label style={{ fontSize:12,fontWeight:600,color:C.t4,display:"block",marginBottom:8 }}>Name (optional)</label>
               <input
                 type="text"
                 value={name}
                 onChange={e=>setName(e.target.value)}
-                placeholder="Your name (optional)"
-                style={{...inp,width:"100%",padding:"12px 14px",fontSize:14,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:10}}
+                placeholder="First name"
+                style={{...inp,width:"100%",padding:"13px 16px",fontSize:14,background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12,fontWeight:500}}
                 onFocus={e=>e.target.style.borderColor=C.vi}
                 onBlur={e=>e.target.style.borderColor=C.b2}
               />
             </div>
-            {err && <div style={{fontSize:13,color:C.err,background:C.err+"0c",border:`1px solid ${C.err}22`,borderRadius:8,padding:"10px",textAlign:"center"}}>{err}</div>}
-            <button type="submit" disabled={busy} style={{...btnP(),fontSize:14,padding:"14px",width:"100%"}}>{busy?"Checking in...":"Check in & earn stamp"}</button>
+            {err && <div style={{fontSize:13,color:C.err,background:C.err+"0c",border:`1px solid ${C.err}22`,borderRadius:10,padding:"12px",textAlign:"center",fontWeight:500}}>{err}</div>}
+            <button type="submit" disabled={busy} style={{...btnP(),fontSize:15,fontWeight:700,padding:"15px",width:"100%",boxShadow:`0 8px 24px ${C.vi}30`,transition:"all .2s"}}>{busy?"Checking in...":"Check in & earn stamp"}</button>
           </form>
 
-          <div style={{ textAlign:"center",fontSize:12,color:C.t4 }}>
-            Already a member? <span onClick={()=>setStep("member")} style={{color:C.vi,fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>Open my rewards</span>
+          {/* Member Link */}
+          <div style={{ textAlign:"center",fontSize:13,color:C.t4 }}>
+            Already a member? <span onClick={()=>setStep("member")} style={{color:C.vi,fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>View my rewards</span>
           </div>
         </>
       )}
 
+      {/* Success State */}
       {(step==="success" || step==="tier") && (
-        <div style={{ textAlign:"center",maxWidth:340,margin:"0 auto" }}>
-          <div style={{ fontSize:48,marginBottom:16 }}>🎉</div>
+        <div style={{ textAlign:"center",maxWidth:400,margin:"0 auto" }}>
+          <div style={{ fontSize:64,marginBottom:20,animation:"pulse 1s infinite" }}>🎉</div>
           {step==="tier" && unlockedTier ? (
             <>
-              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:8}}>Tier Unlocked!</h2>
-              <p style={{fontSize:14,color:C.t3,marginBottom:16}}>{unlockedTier.level}: {unlockedTier.reward}</p>
+              <h2 style={{fontSize:24,fontWeight:900,color:C.t1,marginBottom:12}}>Tier Unlocked!</h2>
+              <p style={{fontSize:15,color:C.t3,marginBottom:24}}>{unlockedTier.level}<br/>{unlockedTier.reward}</p>
               {unlockedTier.isGold && (
                 <>
-                  <div style={{background:C.vi,borderRadius:12,padding:"20px",marginBottom:16}}>
-                    <div style={{fontSize:12,color:"#000",marginBottom:8,fontWeight:700}}>Your redemption code</div>
-                    <div style={{fontSize:20,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".1em"}}>{redeemCode}</div>
+                  <div style={{background:C.vi,borderRadius:16,padding:"24px",marginBottom:24,boxShadow:`0 12px 32px ${C.vi}40`}}>
+                    <div style={{fontSize:11,color:"#000",marginBottom:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Your reward code</div>
+                    <div style={{fontSize:28,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".12em",marginBottom:12}}>{redeemCode}</div>
+                    <div style={{fontSize:12,color:"#000",opacity:0.8}}>Show at counter to claim</div>
                   </div>
-                  <p style={{fontSize:13,color:C.t4,marginBottom:16}}>Show this code at the counter to claim your reward</p>
                 </>
               )}
             </>
           ) : (
             <>
-              <h2 style={{fontSize:20,fontWeight:900,color:C.t1,marginBottom:20}}>Stamp earned!</h2>
-              <div style={{marginBottom:20}}>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16,maxWidth:240,margin:"0 auto 16px"}}>
+              <h2 style={{fontSize:24,fontWeight:900,color:C.t1,marginBottom:24}}>Stamp earned!</h2>
+              <div style={{marginBottom:24}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18,maxWidth:280,margin:"0 auto 18px"}}>
                   {Array.from({length:goal}).map((_,i)=>(
-                    <div key={i} style={{aspectRatio:"1",borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:i<stamps?"#000":C.t4,transition:"all .3s"}}>{i<stamps?"✓":i+1}</div>
+                    <div key={i} style={{aspectRatio:"1",borderRadius:"12px",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b2}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:i<stamps?"#000":C.t4,boxShadow:i<stamps?`0 6px 16px ${C.vi}30`:"none",transition:"all .3s"}}>{i<stamps?"✓":i+1}</div>
                   ))}
                 </div>
-                <div style={{fontSize:13,color:C.t3,textAlign:"center"}}>{stamps}/{goal} stamps collected</div>
-                <div style={{fontSize:12,color:C.t4,textAlign:"center",marginTop:6}}>{goal-stamps} more to unlock {reward}</div>
+                <div style={{fontSize:14,color:C.t3,fontWeight:600}}>{stamps}/{goal} stamps</div>
+                <div style={{fontSize:12,color:C.t4,marginTop:6}}>{goal-stamps} more to unlock {reward}</div>
               </div>
               {stamps >= goal && (
                 <>
-                  <div style={{background:C.vi,borderRadius:12,padding:"20px",marginBottom:16}}>
-                    <div style={{fontSize:12,color:"#000",marginBottom:8,fontWeight:700}}>Your reward code</div>
-                    <div style={{fontSize:20,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".1em"}}>{redeemCode}</div>
+                  <div style={{background:C.vi,borderRadius:16,padding:"24px",marginBottom:24,boxShadow:`0 12px 32px ${C.vi}40`}}>
+                    <div style={{fontSize:11,color:"#000",marginBottom:10,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Your reward code</div>
+                    <div style={{fontSize:28,fontWeight:900,color:"#000",fontFamily:"monospace",letterSpacing:".12em",marginBottom:12}}>{redeemCode}</div>
+                    <div style={{fontSize:12,color:"#000",opacity:0.8}}>Show at counter to claim</div>
                   </div>
-                  <p style={{fontSize:13,color:C.t4,marginBottom:16}}>Show this code at the counter to claim your {reward}</p>
                 </>
               )}
             </>
           )}
-          <button onClick={()=>{setStep("checkin");setEmail("");setName("");setErr("");}} style={{...btnP(),fontSize:14,padding:"12px 24px"}}>Check in again</button>
+          <button onClick={()=>{setStep("checkin");setEmail("");setName("");setErr("");}} style={{...btnP(),fontSize:15,fontWeight:700,padding:"13px 32px",boxShadow:`0 8px 24px ${C.vi}30`}}>Check in again</button>
         </div>
       )}
 
+      {/* Member View */}
       {step==="member" && (
-        <div style={{ maxWidth:340,margin:"0 auto" }}>
-          <div style={{textAlign:"center",marginBottom:24}}>
-            <div style={{fontSize:32,marginBottom:12}}>⭐</div>
-            <h2 style={{fontSize:18,fontWeight:900,color:C.t1,marginBottom:8}}>My rewards</h2>
+        <div style={{ maxWidth:400,margin:"0 auto" }}>
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <div style={{fontSize:48,marginBottom:16}}>⭐</div>
+            <h2 style={{fontSize:22,fontWeight:900,color:C.t1,marginBottom:8}}>Your rewards</h2>
+            <p style={{fontSize:13,color:C.t4}}>Keep earning stamps toward your next reward</p>
           </div>
-          <div style={{background:C.bg2,borderRadius:12,padding:"20px",textAlign:"center",border:`1px solid ${C.b2}`,marginBottom:16}}>
-            <div style={{fontSize:12,color:C.t4,marginBottom:12}}>Your stamp progress</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16,maxWidth:240,margin:"0 auto 16px"}}>
+          <div style={{background:C.bg2,borderRadius:16,padding:"24px",textAlign:"center",border:`1px solid ${C.b2}`,marginBottom:20,boxShadow:`0 4px 16px ${C.bg4}`}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20,maxWidth:280,margin:"0 auto 20px"}}>
               {Array.from({length:goal}).map((_,i)=>(
-                <div key={i} style={{aspectRatio:"1",borderRadius:"50%",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b3}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:i<stamps?"#000":C.t4}}>{i<stamps?"✓":i+1}</div>
+                <div key={i} style={{aspectRatio:"1",borderRadius:"12px",background:i<stamps?C.vi:C.bg3,border:`2px solid ${i<stamps?C.vi:C.b2}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:i<stamps?"#000":C.t4,boxShadow:i<stamps?`0 6px 16px ${C.vi}30`:"none"}}>{i<stamps?"✓":i+1}</div>
               ))}
             </div>
-            <div style={{fontSize:12,color:C.t3}}>{stamps}/{goal} stamps</div>
+            <div style={{fontSize:14,color:C.t3,fontWeight:600}}>{stamps}/{goal} stamps collected</div>
+            <div style={{fontSize:12,color:C.t4,marginTop:8}}>Earn {goal-stamps} more for your {reward}</div>
           </div>
-          <p style={{fontSize:13,color:C.t3,textAlign:"center",marginBottom:20}}>Earn {goal-stamps} more to unlock {reward}</p>
-          <button onClick={()=>setStep("checkin")} style={{...btnP(),fontSize:14,padding:"12px",width:"100%"}}>Check in now</button>
+          <button onClick={()=>setStep("checkin")} style={{...btnP(),fontSize:15,fontWeight:700,padding:"14px",width:"100%",boxShadow:`0 8px 24px ${C.vi}30`}}>Check in now</button>
         </div>
       )}
 
+      {/* Promo Section */}
       {promoTitle && promoDesc && (
-        <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:14,padding:"16px",marginTop:24,marginBottom:20,textAlign:"center" }}>
-          <div style={{ fontSize:13,fontWeight:700,color:C.vi,letterSpacing:".06em",marginBottom:6 }}>{promoTitle}</div>
-          <p style={{ fontSize:13,color:C.t3,lineHeight:1.6,marginBottom:12 }}>{promoDesc}</p>
+        <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:16,padding:"20px",marginTop:24,marginBottom:20,textAlign:"center",boxShadow:`0 4px 16px ${C.bg4}` }}>
+          <div style={{ fontSize:13,fontWeight:700,color:C.vi,letterSpacing:".08em",marginBottom:8,textTransform:"uppercase" }}>{promoTitle}</div>
+          <p style={{ fontSize:13,color:C.t3,lineHeight:1.6,marginBottom:16,margin:0 }}>{promoDesc}</p>
           {promoButtonText && promoButtonLink && (
-            <a href={promoButtonLink} target="_blank" rel="noopener noreferrer" style={{...btnP(),fontSize:12,padding:"10px 20px",display:"inline-block",textDecoration:"none"}}>
+            <a href={promoButtonLink} target="_blank" rel="noopener noreferrer" style={{...btnP(),fontSize:13,fontWeight:700,padding:"11px 22px",display:"inline-block",textDecoration:"none"}}>
               {promoButtonText}
             </a>
           )}
         </div>
       )}
 
-      <div style={{textAlign:"center",marginTop:32,paddingTop:24,borderTop:`1px solid ${C.b1}`}}>
-        <div style={{fontSize:10,color:C.t4}}>Powered by Xhibitur Rewards</div>
+      {/* Footer */}
+      <div style={{textAlign:"center",marginTop:32,paddingTop:20,borderTop:`1px solid ${C.b1}`}}>
+        <div style={{fontSize:10,color:C.t4,fontWeight:500}}>Powered by Xhibitur Rewards</div>
       </div>
     </div>
   );
