@@ -12,7 +12,7 @@ exports.handler = async (event) => {
   };
   if (event.httpMethod === "OPTIONS") return { statusCode:200, headers, body:"" };
   try {
-    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName, tiers, refEnabled, refBonus, promoTitle, promoDesc, promoButtonText, promoButtonLink, logoImage } = JSON.parse(event.body);
+    const { slug, name, destinations, fallback, rewardGoal, rewardName, programName, tiers, refEnabled, refBonus, promoTitle, promoDesc, promoButtonText, promoButtonLink } = JSON.parse(event.body);
     if (!slug || !name) return { statusCode:400, headers, body: JSON.stringify({ error:"Slug and name required" }) };
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
     if (!cleanSlug) return { statusCode:400, headers, body: JSON.stringify({ error:"Invalid slug" }) };
@@ -34,7 +34,6 @@ exports.handler = async (event) => {
       promoDesc: promoDesc || "",
       promoButtonText: promoButtonText || "",
       promoButtonLink: promoButtonLink || "",
-      logoImage: logoImage || "",
     });
     const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${cleanSlug}`;
     const cfRes = await fetch(cfUrl, {
