@@ -32,7 +32,6 @@ exports.handler = async (event) => {
       promoDesc:   data.promoDesc   || "",
       promoButtonText:  data.promoButtonText  || "",
       promoButtonLink:  data.promoButtonLink  || "",
-      logoImage:   data.logoImage   || "",
     })};
   } catch(err) {
     return { statusCode:200, headers, body: JSON.stringify({ rewardGoal:10, rewardName:"Free item" }) };
