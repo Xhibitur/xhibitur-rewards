@@ -1124,10 +1124,25 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
     const autoUrl = `https://${slug}.qr.xhibitur.com`;
     const autoFallback = fb || `https://rewards.xhibitur.com/#/checkin/${slug}`;
     const prog = programs.find(p=>p.id===linkedProgram);
-    const rewardSettings = prog ? { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name } : { goal:10, reward:"Free item", programName:"" };
+    let rewardSettings = { goal:10, reward:"Free item", programName:"", tiers:null };
+    if (prog && prog.type === "tiers") {
+      // Sort by stamp count so the check-in page can trust the order.
+      const tiers = [...(prog.cfg?.tiers||[])]
+        .filter(t=>t && t.stamps>0 && t.reward)
+        .sort((a,b)=>a.stamps-b.stamps);
+      const top = tiers[tiers.length-1];
+      rewardSettings = {
+        goal: top?.stamps || 10,
+        reward: top?.reward || "Free item",
+        programName: prog.name,
+        tiers: tiers.length ? tiers : null,
+      };
+    } else if (prog) {
+      rewardSettings = { goal:prog.cfg?.stampsRequired||10, reward:prog.cfg?.reward||"Free item", programName:prog.name, tiers:null };
+    }
     setSaving(true);
     try {
-      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, promoTitle, promoDesc, promoButtonText, promoButtonLink }) });
+      await fetch("/.netlify/functions/save-qr-rules", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, name, destinations:dests, fallback:autoFallback, rewardGoal:rewardSettings.goal, rewardName:rewardSettings.reward, programName:rewardSettings.programName, tiers:rewardSettings.tiers, promoTitle, promoDesc, promoButtonText, promoButtonLink }) });
     } catch(e) { console.error("KV save failed:", e); }
     setSaving(false);
     onSave({ id:init?.id||gid(), name, workerUrl:autoUrl, destinations:dests, fallback:autoFallback, fg, linkedProgram });
@@ -1181,7 +1196,13 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
                 <label style={lbl}>Link to rewards program</label>
                 <select value={linkedProgram} onChange={e=>setLinkedProgram(e.target.value)} style={{ ...si,width:"100%",color:linkedProgram?C.t1:C.t4 }}>
                   <option value="">— No program linked (default: 10 stamps, Free item) —</option>
-                  {programs.filter(p=>p.type==="stamps").map(p=>(<option key={p.id} value={p.id}>{p.name} — {p.cfg?.stampsRequired} stamps → {p.cfg?.reward}</option>))}
+                  {programs.filter(p=>p.type==="stamps"||p.type==="tiers").map(p=>{
+                    const top = p.type==="tiers" ? (p.cfg?.tiers||[])[(p.cfg?.tiers||[]).length-1] : null;
+                    const label = p.type==="tiers"
+                      ? `${p.name} — ${(p.cfg?.tiers||[]).length} tiers → ${top?.reward||"reward"}`
+                      : `${p.name} — ${p.cfg?.stampsRequired} stamps → ${p.cfg?.reward}`;
+                    return <option key={p.id} value={p.id}>{label}</option>;
+                  })}
                 </select>
               </div>
               <div>
@@ -1367,7 +1388,6 @@ function QRPage() {
 const RWD = [
   { id:"stamps",   icon:"🎯", lb:"Stamp Card",    desc:"Scan to earn stamps. Redeem at goal." },
   { id:"tiers",    icon:"👑", lb:"Loyalty Tiers", desc:"Bronze, Silver, Gold — stamp milestones." },
-  { id:"referral", icon:"🤝", lb:"Referral",       desc:"Share a link. Friend joins. Both earn." },
 ];
 const RPAL=[C.am,C.vi,C.cy];
 
@@ -1419,7 +1439,7 @@ function RwdModal({ init,onSave,onClose }) {
           <div><label style={lbl}>Program name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Coffee Loyalty Club" style={si} onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/></div>
           <div>
             <label style={lbl}>Program type</label>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
               {RWD.map(rt=>(<button key={rt.id} onClick={()=>setType(rt.id)} style={{ padding:"12px 8px",borderRadius:10,cursor:"pointer",border:`2px solid ${type===rt.id?C.vi:C.b2}`,background:type===rt.id?C.viDim:C.bg3,textAlign:"center",transition:"all .12s" }}><div style={{ fontSize:22,marginBottom:4 }}>{rt.icon}</div><div style={{ fontSize:12,fontWeight:700,color:type===rt.id?C.vi:C.t1 }}>{rt.lb}</div></button>))}
             </div>
           </div>
@@ -1672,66 +1692,96 @@ function CheckInPage() {
       }).catch(()=>{});
   },[slug]);
 
-  const recordRedemption = (rewardLabel) => {
-    fetch("/.netlify/functions/record-redemption", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ slug, email: email.toLowerCase(), reward: rewardLabel||"reward" }) }).catch(()=>{});
+  const COOLDOWN_MS = 4*60*60*1000;
+
+  const waitMessage = (ms) => {
+    const mins = Math.ceil(ms/60000);
+    if (mins < 60) return `Come back in ${mins} minute${mins===1?"":"s"} to earn another stamp`;
+    const hrs = Math.ceil(ms/3600000);
+    return `Come back in ${hrs} hour${hrs===1?"":"s"} to earn another stamp`;
+  };
+
+  // Records the event and lets the server enforce the cooldown.
+  // Returns { ok } on success, or { ok:false, cooldown:true, ... } if rejected.
+  const postRedemption = async (rewardLabel) => {
+    try {
+      const r = await fetch("/.netlify/functions/record-redemption", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ slug, email: email.trim().toLowerCase(), reward: rewardLabel||"reward" })
+      });
+      if (r.status === 429) {
+        const d = await r.json().catch(()=>({}));
+        return { ok:false, cooldown:true, retryAfterMs: d.retryAfterMs||0, message: d.message };
+      }
+      return { ok:true };
+    } catch {
+      // Network failure: don't strand a guest at the counter.
+      return { ok:true, offline:true };
+    }
   };
 
   const handleCheckin = async e => {
     e.preventDefault();
     if (!email) { setErr("Email required"); return; }
     setBusy(true); setErr("");
-    
+
+    const key = `stamps_${slug}_${email.trim().toLowerCase()}`;
+    const now = Date.now();
+
     try {
-      const key = `stamps_${slug}_${email.toLowerCase()}`;
+      // Fast path: block the obvious repeat without a round trip.
       const lastTime = localStorage.getItem(`${key}_last`);
-      const now = Date.now();
-      const COOLDOWN = 4*60*60*1000;
-      
-      if (lastTime && now - parseInt(lastTime) < COOLDOWN) {
-        const hoursLeft = Math.ceil((COOLDOWN - (now - parseInt(lastTime)))/3600000);
-        setErr(`Come back in ${hoursLeft} hour${hoursLeft>1?"s":""} to earn another stamp`);
+      if (lastTime && now - parseInt(lastTime) < COOLDOWN_MS) {
+        setErr(waitMessage(COOLDOWN_MS - (now - parseInt(lastTime))));
         setBusy(false);
         return;
       }
 
       const current = parseInt(localStorage.getItem(key)||"0");
       const newStamps = current + 1;
-      
+
+      // Work out what this check-in earns before committing anything.
+      let mode = "stamp", label = "stamp", tierHit = null, isGold = false;
       if (tiers && tiers.length > 0) {
-        const newlyUnlocked = tiers.find(t=>t.stamps===newStamps);
-        if (newlyUnlocked) {
-          const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-          const maxTier = tiers[tiers.length-1];
-          const isGold = newlyUnlocked.stamps === maxTier.stamps;
-          localStorage.setItem(key, isGold ? "0" : newStamps.toString());
-          localStorage.setItem(`${key}_last`, now.toString());
-          if (isGold) localStorage.setItem(`${key}_gold`, "true");
-          if (name) localStorage.setItem(`${key}_name`, name);
-          setRedeemCode(code);
-          setStamps(isGold ? 0 : newStamps);
-          setUnlockedTier({...newlyUnlocked, redemptionCode:code, isGold});
-          recordRedemption(newlyUnlocked.reward);
-          setStep("tier");
-          setBusy(false);
-          return;
+        tierHit = tiers.find(t=>t.stamps===newStamps) || null;
+        if (tierHit) {
+          mode = "tier";
+          label = tierHit.reward;
+          isGold = tierHit.stamps === tiers[tiers.length-1].stamps;
         }
       }
+      if (!tierHit && newStamps >= goal) { mode = "reward"; label = reward; }
 
-      if (newStamps >= goal) {
-        const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+      // The server is the authority. Nothing is written locally until it agrees.
+      const res = await postRedemption(label);
+      if (!res.ok && res.cooldown) {
+        // Re-sync the local clock so the fast path matches the server.
+        localStorage.setItem(`${key}_last`, String(now - (COOLDOWN_MS - res.retryAfterMs)));
+        setErr(res.message || waitMessage(res.retryAfterMs));
+        setBusy(false);
+        return;
+      }
+
+      const code = `${slug.slice(0,4).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+      localStorage.setItem(`${key}_last`, String(now));
+      if (name) localStorage.setItem(`${key}_name`, name);
+
+      if (mode === "tier") {
+        localStorage.setItem(key, isGold ? "0" : String(newStamps));
+        if (isGold) localStorage.setItem(`${key}_gold`, "true");
+        setRedeemCode(code);
+        setStamps(isGold ? 0 : newStamps);
+        setUnlockedTier({...tierHit, redemptionCode:code, isGold});
+        setStep("tier");
+      } else if (mode === "reward") {
         localStorage.setItem(key, "0");
-        localStorage.setItem(`${key}_last`, now.toString());
-        if (name) localStorage.setItem(`${key}_name`, name);
         setRedeemCode(code);
         setStamps(0);
-        recordRedemption(reward);
         setStep("success");
       } else {
-        localStorage.setItem(key, newStamps.toString());
-        localStorage.setItem(`${key}_last`, now.toString());
-        if (name) localStorage.setItem(`${key}_name`, name);
+        localStorage.setItem(key, String(newStamps));
         setStamps(newStamps);
-        recordRedemption("stamp");
         setStep("success");
       }
     } catch (e) {
