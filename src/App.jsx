@@ -237,6 +237,7 @@ const TABS = [
   { id:"dashboard/stickers",  icon:"🏷", label:"Stickers"  },
   { id:"dashboard/account",   icon:"◉",  label:"Account"   },
   { id:"dashboard/broadcast", icon:"📣", label:"Broadcast" },
+  { id:"dashboard/mystery",   icon:"🎁", label:"Mystery Box" },
 ];
 
 function TopNav() {
@@ -368,37 +369,42 @@ function PgHead({ title, sub, action }) {
 
 const PRIVACY = [
   { h:"1. Introduction", b:"Xhibitur LLC (\"we\", \"us\", \"our\") operates Xhibitur Rewards. This Privacy Policy explains how we collect, use, and protect your information. By using Xhibitur Rewards you agree to this policy." },
-  { h:"2. Information We Collect", b:"We collect your email when you sign up, plus device info, visit data (timestamp, business ID, visit count), and usage data. We do not collect payment info or government ID." },
-  { h:"3. How We Use Your Information", b:"We use your info to: (a) operate your loyalty account; (b) send promotional messages from Xhibitur and partner businesses; (c) generate analytics; (d) comply with legal obligations; (e) prevent fraud." },
-  { h:"4. Sharing of Information", b:"We share your contact info with the business whose QR you scanned. We do not sell your data. We may share with service providers under confidentiality agreements, or as required by law." },
-  { h:"5. Promotional Communications", b:"By creating an account you opt in to receive promotional messages (SMS, email) from Xhibitur and partners. Opt out anytime: reply STOP to SMS, click unsubscribe in email, or email info@xhibitur.com." },
-  { h:"6. SMS and Email", b:"You consent to recurring automated promotional SMS and emails. Consent is not required for purchase. Msg and data rates may apply. Reply STOP to opt out. Reply HELP for help." },
-  { h:"7. Data Retention", b:"We retain your info while your account is active. Visit history kept at least 24 months. Request deletion at info@xhibitur.com — processed within 30 days." },
-  { h:"8. Local Storage", b:"We use browser localStorage to store your anonymised ID and stamp counts. No third-party tracking cookies. Clear via browser settings — this resets your stamps." },
-  { h:"9. Security", b:"We use TLS encryption, hashed identifiers, and access controls. No internet transmission is 100% secure." },
-  { h:"10. Children", b:"Xhibitur Rewards is not directed to persons under 13 years of age. We do not knowingly collect personal information from children under 13. If you are under 13 you may not create an account. Contact info@xhibitur.com if you believe we collected data from a child." },
-  { h:"11. Your Rights", b:"You may access, correct, delete, or port your data. Contact info@xhibitur.com. We respond within 30 days." },
-  { h:"12. New York Residents", b:"Under the NY SHIELD Act and NY GBL Section 899-aa, we maintain reasonable safeguards. We will notify you of any breach per NY law." },
-  { h:"13. Changes", b:"We may update this policy. Continued use constitutes acceptance." },
-  { h:"14. Contact", b:"info@xhibitur.com · Xhibitur LLC" },
+  { h:"2. Information We Collect", b:"We collect your email when you sign up or claim a reward, plus device and browser info, visit data (timestamp, business ID, visit count), promotion play and prize claim history, and usage data. We also store a randomly generated device identifier in your browser to apply entry limits. We do not collect payment card numbers or government ID." },
+  { h:"3. How We Use Your Information", b:"We use your info to: (a) operate your loyalty account; (b) send messages you have consented to receive; (c) administer promotions, apply entry limits, and verify prize eligibility; (d) generate analytics for the business; (e) comply with legal and record-keeping obligations; (f) detect and prevent fraud and abuse." },
+  { h:"4. Sharing of Information", b:"We share your contact info with the business whose QR code you scanned. If you claim a prize, we share your email and claim details with that promotion's Sponsor so they can honour the prize. We use service providers who process data on our behalf under contract: Supabase (database), Netlify (hosting and serverless functions), Cloudflare (QR routing and storage), Resend (email delivery), and Stripe (business subscription billing). We do not sell your personal information. We may disclose information where required by law." },
+  { h:"5. Promotional Communications", b:"Where you have opted in, you may receive promotional messages from Xhibitur and the businesses you have visited. Opt out at any time: reply STOP to SMS, use the unsubscribe link in any email, or email info@xhibitur.com." },
+  { h:"6. SMS and Email", b:"You consent to recurring automated promotional SMS and emails only where you have checked a box to receive them. Consent is not a condition of purchase or of entering any promotion. Msg and data rates may apply. Reply STOP to opt out. Reply HELP for help." },
+  { h:"7. Promotions and Prize Claims", b:"When you enter a promotion we record the entry, the outcome, and the device identifier used. If you win and choose to claim, we record your email address, your acceptance of the Official Rules, and the date and time of that acceptance. We retain these records for as long as needed to administer the promotion and to meet record-keeping obligations. Each promotion is governed by its own Official Rules, published by that promotion's Sponsor." },
+  { h:"8. Data Retention", b:"We retain your info while your account is active. Visit and promotion history is kept for at least 24 months. Request deletion at info@xhibitur.com — processed within 30 days, except where we must retain records to comply with law." },
+  { h:"9. Local Storage and Device Identifier", b:"We use browser localStorage to store a randomly generated device identifier, your stamp counts, and recent activity timestamps. This identifier is not linked to your name and is used to apply entry and check-in limits. We do not use third-party advertising or tracking cookies. Clearing your browser storage resets your stamps." },
+  { h:"10. Security", b:"We use TLS encryption, hashed identifiers, and access controls. Prize links are held server-side and released only after a valid claim. No internet transmission is 100% secure." },
+  { h:"11. Children", b:"Xhibitur Rewards is not directed to persons under 13 years of age, and we do not knowingly collect personal information from children under 13. Promotions are open only to entrants 18 years of age or older. Contact info@xhibitur.com if you believe we collected data from a child." },
+  { h:"12. Your Rights", b:"You may access, correct, delete, or port your data. Contact info@xhibitur.com. We respond within 30 days." },
+  { h:"13. California Residents", b:"If you are a California resident you may request to know the categories and specific pieces of personal information we have collected, request correction or deletion, and request details of any disclosure. We do not sell or share personal information as those terms are defined under the CCPA/CPRA, and we do not use sensitive personal information for inferring characteristics. We will not discriminate against you for exercising these rights. Submit requests to info@xhibitur.com." },
+  { h:"14. New York Residents", b:"Under the NY SHIELD Act and NY GBL Section 899-aa, we maintain reasonable administrative, technical, and physical safeguards. We will notify you of any breach of private information as required by New York law." },
+  { h:"15. Changes", b:"We may update this policy. Material changes will be reflected in the date below. Continued use constitutes acceptance." },
+  { h:"16. Contact", b:"info@xhibitur.com · Xhibitur LLC · New York, NY" },
 ];
 const TERMS = [
   { h:"1. Acceptance", b:"By using Xhibitur Rewards you agree to these Terms. If you do not agree, do not use the platform." },
-  { h:"2. Service", b:"Xhibitur Rewards is a QR-based loyalty platform by Xhibitur LLC. We are a technology provider, not party to business-customer transactions." },
-  { h:"3. Eligibility", b:"You must be at least 13 years old to create an account or use Xhibitur Rewards. By creating an account you represent that you are 13 or older. Business owners represent they have authority to bind their business. We reserve the right to terminate any account found to belong to a person under 13." },
-  { h:"4. Check-In and Rewards", b:"Check-in creates a loyalty record. Rewards are at the business's sole discretion. Xhibitur LLC is not responsible for reward value or fulfilment." },
-  { h:"5. Promotional Consent", b:"By creating an account you consent to promotional SMS and emails from Xhibitur LLC and partners. Opt out anytime. Msg and data rates may apply." },
-  { h:"6. Business Responsibilities", b:"Businesses agree to: provide accurate info; honour advertised rewards; use customer data lawfully; maintain dashboard link confidentiality. We may suspend violating accounts." },
-  { h:"7. Intellectual Property", b:"All platform content and branding is owned by Xhibitur LLC or its licensors. Xhibitur is a trademark of Xhibitur LLC." },
-  { h:"8. Prohibited Conduct", b:"Do not: use the platform unlawfully; manipulate stamps; create fraudulent check-ins; reverse engineer; use bots; impersonate others." },
-  { h:"9. Disclaimer", b:"Platform is provided as-is with no warranties of any kind." },
-  { h:"10. Limitation of Liability", b:"Xhibitur LLC is not liable for indirect or consequential damages. Total liability capped at $100 USD or amounts paid in prior 12 months." },
-  { h:"11. Indemnification", b:"You indemnify Xhibitur LLC from claims arising from your use or violation of these Terms." },
-  { h:"12. NY Compliance", b:"We comply with TCPA, CAN-SPAM, NY General Business Law, and NY SHIELD Act." },
-  { h:"13. Class Action Waiver", b:"Disputes resolved individually. No class action or class arbitration against Xhibitur LLC." },
-  { h:"14. Governing Law", b:"Governed by New York law. Disputes in New York County courts." },
-  { h:"15. Changes", b:"We may update these Terms. Continued use constitutes acceptance." },
-  { h:"16. Contact", b:"info@xhibitur.com · Xhibitur LLC" },
+  { h:"2. Service", b:"Xhibitur Rewards is a QR-based loyalty and promotions platform operated by Xhibitur LLC. We are a technology provider. We are not a party to any transaction between a business and its customers, and we do not sell, award, or fulfil any reward or prize." },
+  { h:"3. Eligibility", b:"You must be at least 13 years old to create an account or use Xhibitur Rewards, and at least 18 years old to enter any promotion run on the platform. Business owners represent that they have authority to bind their business. We may terminate any account found to belong to a person under 13." },
+  { h:"4. Check-In and Rewards", b:"Check-in creates a loyalty record. Rewards are offered and honoured at the business's sole discretion. Xhibitur LLC is not responsible for the value, availability, or fulfilment of any reward." },
+  { h:"5. Promotions and Giveaways", b:"Businesses may run promotions, giveaways, or sweepstakes using the platform. In every such promotion the business is the Sponsor: it selects and funds the prizes, awards and fulfils them, and is solely responsible for the promotion's legality, including publishing Official Rules and completing any registration or bonding required by state law. Xhibitur LLC acts only as Administrator, supplying the technology that records entries and releases prize codes. Xhibitur LLC does not award prizes and is not liable for their delivery, value, or redemption. Each promotion is governed by its own Official Rules." },
+  { h:"6. No Purchase Necessary", b:"Promotions run on Xhibitur Rewards must be free to enter. No purchase or payment of any kind may be required to enter or to win, and a purchase must not improve a person's chance of winning. Sponsors are responsible for ensuring their promotion meets this requirement." },
+  { h:"7. Prizes", b:"Unless the Sponsor states otherwise in the Official Rules, prizes are awarded as-is, have no cash value, are not transferable, and may not be substituted. Entrants are responsible for all taxes arising from a prize. Sponsors are responsible for any tax reporting their jurisdiction requires." },
+  { h:"8. Promotional Consent", b:"Where you check a box to receive them, you consent to promotional SMS and emails from Xhibitur LLC and the businesses you have visited. Opt out at any time. Msg and data rates may apply." },
+  { h:"9. Business Responsibilities", b:"Businesses agree to: provide accurate information; honour advertised rewards and prizes; publish accurate Official Rules for any promotion; comply with all applicable sweepstakes, contest, lottery, advertising, and consumer protection laws; use customer data lawfully and only for the purposes disclosed; and keep dashboard access confidential. We may suspend any account in violation." },
+  { h:"10. Intellectual Property", b:"All platform content and branding is owned by Xhibitur LLC or its licensors. Xhibitur is a trademark of Xhibitur LLC." },
+  { h:"11. Prohibited Conduct", b:"Do not: use the platform unlawfully; manipulate stamps, entries, or outcomes; create fraudulent check-ins or entries; use multiple identities or devices to exceed entry limits; reverse engineer the platform; use bots; or impersonate others." },
+  { h:"12. Disclaimer", b:"The platform is provided as-is with no warranties of any kind, express or implied." },
+  { h:"13. Limitation of Liability", b:"Xhibitur LLC is not liable for indirect, incidental, or consequential damages. Total liability is capped at $100 USD or the amounts you paid us in the prior 12 months, whichever is greater." },
+  { h:"14. Indemnification", b:"You indemnify Xhibitur LLC from claims arising from your use of the platform, your violation of these Terms, or, if you are a business, from any promotion you run." },
+  { h:"15. Compliance", b:"We comply with the TCPA, CAN-SPAM, New York General Business Law, and the NY SHIELD Act." },
+  { h:"16. Class Action Waiver", b:"Disputes are resolved individually. No class action or class arbitration may be brought against Xhibitur LLC." },
+  { h:"17. Governing Law", b:"Governed by the laws of the State of New York. Disputes shall be brought in the state or federal courts located in New York County, New York." },
+  { h:"18. Changes", b:"We may update these Terms. Continued use constitutes acceptance." },
+  { h:"19. Contact", b:"info@xhibitur.com · Xhibitur LLC · New York, NY" },
 ];
 
 function LegalModal({ type, onClose }) {
@@ -1146,7 +1152,32 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
   const [promoButtonLink,setPromoButtonLink]=useState(init?.promoButtonLink||"");
   const [logoImage,setLogoImage]=useState(init?.logoImage||"");
   const [logoErr,setLogoErr]=useState("");
+  const [loadingExtras,setLoadingExtras]=useState(false);
   const w=useW(); const mob=w<640;
+
+  // The logo, promo copy and tier link live in Cloudflare KV, not in the
+  // qr_codes table the dashboard list is built from. Pull them back in when
+  // editing an existing code so the form shows what's actually live.
+  useEffect(()=>{
+    if (!init?.name) return;
+    const s = init.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50);
+    if (!s) return;
+    let cancelled = false;
+    setLoadingExtras(true);
+    fetch(`/.netlify/functions/get-qr-rules?slug=${s}`)
+      .then(r=>r.json())
+      .then(d=>{
+        if (cancelled || !d) return;
+        if (d.logoImage) setLogoImage(d.logoImage);
+        if (d.promoTitle) setPromoTitle(d.promoTitle);
+        if (d.promoDesc) setPromoDesc(d.promoDesc);
+        if (d.promoButtonText) setPromoButtonText(d.promoButtonText);
+        if (d.promoButtonLink) setPromoButtonLink(d.promoButtonLink);
+      })
+      .catch(()=>{})
+      .finally(()=>{ if(!cancelled) setLoadingExtras(false); });
+    return ()=>{ cancelled = true; };
+  },[init?.id]);
   const upd=(id,u)=>setDests(d=>d.map(x=>x.id===id?u:x));
   const rem=id=>setDests(d=>d.filter(x=>x.id!==id));
   const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
@@ -1205,7 +1236,7 @@ function QRModal({ init, onSave, onClose, programs=[] }) {
               </div>
 
               <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:"14px",marginBottom:16 }}>
-                <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>BUSINESS LOGO (OPTIONAL)</div>
+                <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>BUSINESS LOGO (OPTIONAL){loadingExtras && <span style={{fontWeight:500,color:C.t4,marginLeft:8}}>loading…</span>}</div>
                 <div style={{ display:"flex",gap:14,alignItems:"center",flexWrap:"wrap" }}>
                   <div style={{ width:64,height:64,borderRadius:12,background:C.vi,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden",border:`1px solid ${C.b2}` }}>
                     {logoImage
@@ -1631,8 +1662,9 @@ function RewardsPage({ programs, setPrograms }) {
 function AnalyticsPage() {
   const { user } = useAuth();
   const w=useW(); const mob=w<640;
-  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0 });
+  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0, byCode:[] });
   const [loading,setLoading] = useState(true);
+  const [copied,setCopied] = useState("");
 
   useEffect(()=>{
     if (!user?.email) return;
@@ -1648,14 +1680,69 @@ function AnalyticsPage() {
         <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
         <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.cy}/>
       </div>
-      <div style={{ ...card(),padding:mob?16:20,textAlign:"center" }}>
-        <div style={{ fontSize:14,color:C.t4,padding:"32px 0" }}>
-          {!loading && stats.scans===0 && stats.members===0 && stats.redemptions===0
-            ? "Analytics will populate as customers scan your QR codes and check in."
-            : "Scans, members, and redemptions update automatically as customers check in."}
+      <div style={{ ...card(),padding:mob?14:20 }}>
+        <div style={{ display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:14 }}>
+          <div style={{ fontWeight:700,fontSize:14,color:C.t2 }}>By QR code</div>
+          <div style={{ fontSize:11,color:C.t4 }}>Sorted by check-in visits</div>
         </div>
-        <div style={{ fontSize:12,color:C.t4,opacity:0.7,paddingBottom:20 }}>
-          "Check-In Visits" counts every time a customer opens your check-in page — typically by scanning your QR code.
+
+        {loading ? (
+          <div style={{ textAlign:"center",padding:"28px 0",color:C.t4,fontSize:14 }}>Loading…</div>
+        ) : !stats.byCode || stats.byCode.length===0 ? (
+          <div style={{ textAlign:"center",padding:"28px 0",color:C.t4,fontSize:14 }}>
+            No QR codes yet. Create one and its scans will show up here.
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {!mob && (
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 90px 90px 90px",gap:10,padding:"0 12px 6px",
+                            fontSize:10,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",fontWeight:700 }}>
+                <div>QR code</div>
+                <div style={{textAlign:"right"}}>Visits</div>
+                <div style={{textAlign:"right"}}>Members</div>
+                <div style={{textAlign:"right"}}>Redeemed</div>
+              </div>
+            )}
+
+            {stats.byCode.map(c=>(
+              <div key={c.slug} style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10,padding:mob?"12px 14px":"12px" }}>
+                {mob ? (
+                  <>
+                    <div style={{ fontSize:14,fontWeight:700,color:C.t1,marginBottom:2 }}>{c.name}</div>
+                    <div onClick={()=>{navigator.clipboard?.writeText(c.checkinUrl);setCopied(c.slug);setTimeout(()=>setCopied(""),1500);}}
+                         style={{ fontSize:11,color:copied===c.slug?C.vi:C.t4,marginBottom:10,cursor:"pointer",wordBreak:"break-all" }}>
+                      {copied===c.slug ? "Link copied" : `/checkin/${c.slug}`}
+                    </div>
+                    <div style={{ display:"flex",gap:18 }}>
+                      {[["Visits",c.scans,C.vi],["Members",c.members,C.cy],["Redeemed",c.redemptions,C.fu]].map(([k,v,col])=>(
+                        <div key={k}>
+                          <div style={{ fontSize:10,color:C.t4,textTransform:"uppercase",letterSpacing:".06em",marginBottom:2 }}>{k}</div>
+                          <div style={{ fontSize:17,fontWeight:900,color:v===0?C.t4:col }}>{v.toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 90px 90px 90px",gap:10,alignItems:"center" }}>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:14,fontWeight:700,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{c.name}</div>
+                      <div onClick={()=>{navigator.clipboard?.writeText(c.checkinUrl);setCopied(c.slug);setTimeout(()=>setCopied(""),1500);}}
+                           style={{ fontSize:11,color:copied===c.slug?C.vi:C.t4,cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                        {copied===c.slug ? "Link copied" : `/checkin/${c.slug}`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign:"right",fontSize:17,fontWeight:900,color:c.scans===0?C.t4:C.vi }}>{c.scans.toLocaleString()}</div>
+                    <div style={{ textAlign:"right",fontSize:17,fontWeight:900,color:c.members===0?C.t4:C.cy }}>{c.members.toLocaleString()}</div>
+                    <div style={{ textAlign:"right",fontSize:17,fontWeight:900,color:c.redemptions===0?C.t4:C.fu }}>{c.redemptions.toLocaleString()}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ fontSize:12,color:C.t4,opacity:0.8,marginTop:16,lineHeight:1.55 }}>
+          "Check-In Visits" counts every time someone opens a check-in page — usually by scanning that QR code. A code sitting at zero is either not placed yet or not getting seen.
         </div>
       </div>
     </DashShell>
@@ -1731,6 +1818,7 @@ function CheckInPage() {
   const [promoButtonText,setPromoButtonText]=useState("");
   const [promoButtonLink,setPromoButtonLink]=useState("");
   const [bizLogo,setBizLogo]=useState("");
+  const [legal,setLegal]=useState(null);
   
   useEffect(()=>{
     if (!slug) return;
@@ -2027,6 +2115,11 @@ function CheckInPage() {
       {/* Footer */}
       <div style={{textAlign:"center",marginTop:32,paddingTop:20,borderTop:`1px solid ${C.b1}`}}>
         <div style={{fontSize:10,color:C.t4,fontWeight:500}}>Powered by Xhibitur Rewards</div>
+        <div style={{marginTop:8,display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
+          <span onClick={()=>setLegal("privacy")} style={{fontSize:10,color:C.t3,cursor:"pointer",textDecoration:"underline"}}>Privacy Policy</span>
+          <span onClick={()=>setLegal("terms")} style={{fontSize:10,color:C.t3,cursor:"pointer",textDecoration:"underline"}}>Terms of Use</span>
+        </div>
+        {legal && <LegalModal type={legal} onClose={()=>setLegal(null)}/>}
       </div>
     </div>
   );
@@ -2312,7 +2405,474 @@ function AdminPage() {
   );
 }
 
-const PROTECTED=["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast","dashboard/admin"];
+
+// ── Mystery Box ───────────────────────────────────────────────────────────────
+const DEVICE_KEY = "xr_device";
+function getDeviceId() {
+  try {
+    let d = localStorage.getItem(DEVICE_KEY);
+    if (!d) { d = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(DEVICE_KEY, d); }
+    return d;
+  } catch { return "dev_anon"; }
+}
+
+function MysteryBoxPage() {
+  const w=useW(); const mob=w<640; const px = mob?16:24;
+  const slug = window.location.hash.replace(/^#\/?play\/?/,"").split("?")[0] || "";
+
+  const [stage,setStage]=useState("pick");     // pick | opening | result | claimed
+  const [picked,setPicked]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [res,setRes]=useState(null);           // server response for this roll
+  const [usedReroll,setUsedReroll]=useState(false);
+  const [email,setEmail]=useState("");
+  const [consent,setConsent]=useState(false);
+  const [prize,setPrize]=useState(null);       // { label, url } after claiming
+  const [businessName,setBusinessName]=useState("");
+  const [legal,setLegal]=useState(null);
+  const [odds,setOdds]=useState(null);
+
+  // Campaign details are needed before the first tap, so the business name can
+  // sit under the headline on arrival. This lookup never rolls or records a play.
+  useEffect(()=>{
+    if (!slug) return;
+    let cancelled = false;
+    fetch("/.netlify/functions/mystery-play", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ slug, action:"info" }),
+    })
+      .then(r=>r.json())
+      .then(d=>{
+        if (cancelled || !d) return;
+        if (d.businessName) setBusinessName(d.businessName);
+        setOdds({ winRate:d.winRate, allowReroll:d.allowReroll, rulesUrl:d.termsUrl||"" });
+      })
+      .catch(()=>{});
+    return ()=>{ cancelled = true; };
+  },[slug]);
+
+  const roll = async (boxIndex, rerollOf) => {
+    setPicked(boxIndex);
+    setStage("opening");
+    setBusy(true); setErr("");
+    const started = Date.now();
+    try {
+      const r = await fetch("/.netlify/functions/mystery-play", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ slug, deviceId:getDeviceId(), rerollOf: rerollOf||undefined }),
+      });
+      const d = await r.json();
+      // Let the box animation breathe even if the request was instant.
+      const wait = Math.max(0, 900 - (Date.now()-started));
+      await new Promise(s=>setTimeout(s,wait));
+      if (!r.ok) {
+        setErr(d.message || "Something went wrong. Try again in a moment.");
+        setStage("pick"); setPicked(null); setBusy(false);
+        return;
+      }
+      if (rerollOf) setUsedReroll(true);
+      if (d.businessName) setBusinessName(d.businessName);
+      setRes(d);
+      setStage("result");
+    } catch {
+      setErr("Couldn't reach the server. Check your connection.");
+      setStage("pick"); setPicked(null);
+    }
+    setBusy(false);
+  };
+
+  const claim = async e => {
+    e.preventDefault();
+    if (!consent) { setErr("Please accept the terms to claim your prize."); return; }
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/.netlify/functions/mystery-claim", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ playToken: res.playToken, email, consent:true }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.message || "Couldn't claim that prize."); setBusy(false); return; }
+      setPrize({ label:d.label, url:d.url });
+      setStage("claimed");
+    } catch { setErr("Couldn't reach the server."); }
+    setBusy(false);
+  };
+
+  const box = (i) => {
+    const isPicked = picked===i;
+    const opening = stage==="opening";
+    const revealed = stage==="result" || stage==="claimed";
+    const isWinner = revealed && isPicked && res?.won;
+    return (
+      <button key={i} disabled={stage!=="pick"||busy} onClick={()=>roll(i)}
+        style={{
+          aspectRatio:"1", borderRadius:18, cursor:stage==="pick"?"pointer":"default",
+          border:`2px solid ${isWinner?C.vi:(isPicked?C.vi:C.b2)}`,
+          background: isPicked ? `linear-gradient(160deg, ${C.vi}22, ${C.bg3})` : C.bg2,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize: mob?34:42, transition:"all .25s",
+          transform: opening&&isPicked ? "scale(1.06)" : (revealed&&!isPicked ? "scale(.93)" : "scale(1)"),
+          opacity: revealed&&!isPicked ? .35 : 1,
+          boxShadow: isWinner ? `0 12px 36px ${C.vi}44` : "none",
+        }}>
+        {revealed && isPicked ? (res?.won ? "🎁" : "🫙") : (opening&&isPicked ? "✨" : "📦")}
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ background:`linear-gradient(135deg, ${C.bg} 0%, ${C.bg2} 100%)`, minHeight:"100vh", padding:`${px}px`, paddingBottom:px+32 }}>
+      <div style={{ maxWidth:440, margin:"0 auto" }}>
+
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:C.vi,letterSpacing:".14em",textTransform:"uppercase",marginBottom:10 }}>Free to play</div>
+          <h1 style={{ fontSize:`clamp(24px,6vw,32px)`,fontWeight:900,color:C.t1,letterSpacing:"-0.03em",lineHeight:1.1 }}>Pick a box</h1>
+          {businessName && <div style={{ fontSize:15,fontWeight:700,color:C.t2,marginTop:8,letterSpacing:"-0.01em" }}>{businessName}</div>}
+          <p style={{ fontSize:14,color:C.t3,marginTop:10,lineHeight:1.55 }}>
+            {stage==="pick" && "One free try. No purchase, no app."}
+            {stage==="opening" && "Opening…"}
+            {stage==="result" && (res?.won ? "You won." : "Not this time.")}
+            {stage==="claimed" && "Prize unlocked."}
+          </p>
+        </div>
+
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
+          {[0,1,2].map(box)}
+        </div>
+
+        {/* Odds disclosure, shown before entry (NY GBL 369-ee). */}
+        {stage==="pick" && odds && typeof odds.winRate === "number" && (
+          <div style={{ textAlign:"center", marginBottom:22 }}>
+            <div style={{ fontSize:12, color:C.t3, lineHeight:1.6 }}>
+              Odds of winning: <strong style={{color:C.t2,fontWeight:700}}>{Math.round(odds.winRate*100)}%</strong> per try
+              {odds.allowReroll && <> · <strong style={{color:C.t2,fontWeight:700}}>{Math.round((1-Math.pow(1-odds.winRate,2))*100)}%</strong> if you use your second try</>}
+            </div>
+            <div style={{ fontSize:11, color:C.t4, marginTop:6, lineHeight:1.6 }}>
+              One entry per person per day · 18+ · No purchase necessary
+              {odds.rulesUrl && <> · <a href={odds.rulesUrl} target="_blank" rel="noopener noreferrer" style={{color:C.vi,fontWeight:600,textDecoration:"underline"}}>Official Rules</a></>}
+            </div>
+          </div>
+        )}
+
+        {err && <div style={{fontSize:13,color:C.err,background:C.err+"0c",border:`1px solid ${C.err}22`,borderRadius:10,padding:"12px",textAlign:"center",marginBottom:16}}>{err}</div>}
+
+        {/* ---- Result: won, not yet claimed ---- */}
+        {stage==="result" && res?.won && (
+          <div>
+            <div style={{ background:C.bg2,border:`1px solid ${C.vi}`,borderRadius:16,padding:"20px",textAlign:"center",marginBottom:16 }}>
+              <div style={{fontSize:11,fontWeight:700,color:C.vi,letterSpacing:".12em",textTransform:"uppercase",marginBottom:8}}>Your prize</div>
+              <div style={{fontSize:20,fontWeight:900,color:C.t1}}>{res.prizeLabel}</div>
+              {res.winCopy && <p style={{fontSize:13,color:C.t3,marginTop:10,lineHeight:1.55}}>{res.winCopy}</p>}
+            </div>
+
+            <form onSubmit={claim} style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:14 }}>
+              <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com"
+                style={{...inp,width:"100%",padding:"13px 16px",fontSize:14,background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:12}}
+                onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+              <label style={{ display:"flex",gap:10,alignItems:"flex-start",fontSize:12,color:C.t3,lineHeight:1.5,cursor:"pointer" }}>
+                <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:2,flexShrink:0,accentColor:C.vi,width:16,height:16}}/>
+                <span>
+                  I am 18 or older and accept the{" "}
+                  <a href={res.termsUrl||"#"} target="_blank" rel="noopener noreferrer" style={{color:C.vi,fontWeight:600}}>Official Rules</a>
+                  {" "}and{" "}
+                  <span onClick={e=>{e.preventDefault();e.stopPropagation();setLegal("privacy");}} style={{color:C.vi,fontWeight:600,textDecoration:"underline",cursor:"pointer"}}>Privacy Policy</span>, and agree to receive email about this prize.
+                </span>
+              </label>
+              <button type="submit" disabled={busy||!consent} style={{...btnP(),color:"#000",fontSize:15,fontWeight:700,padding:"14px",width:"100%",opacity:consent?1:.5}}>
+                {busy?"Claiming…":"Claim my prize"}
+              </button>
+            </form>
+
+            {res.canReroll && !usedReroll && (
+              <button onClick={()=>{ if(window.confirm("Trying again gives up this prize. You might win nothing. Continue?")) roll(picked, res.playToken); }}
+                style={{...btnG(),fontSize:13,padding:"12px",width:"100%"}}>
+                Give it up and try again
+              </button>
+            )}
+            <p style={{fontSize:11,color:C.t3,textAlign:"center",marginTop:12,lineHeight:1.5}}>
+              {res.canReroll && !usedReroll ? "One second try only. If you try again, this prize is gone for good." : "This was your second try — it's final."}
+            </p>
+          </div>
+        )}
+
+        {/* ---- Result: lost ---- */}
+        {stage==="result" && !res?.won && (
+          <div style={{ textAlign:"center" }}>
+            <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:16,padding:"22px",marginBottom:16 }}>
+              <div style={{fontSize:17,fontWeight:800,color:C.t1,marginBottom:8}}>
+                {res?.soldOut ? "All prizes claimed" : "No prize this time"}
+              </div>
+              <p style={{fontSize:13,color:C.t3,lineHeight:1.55,margin:0}}>
+                {res?.soldOut
+                  ? "Everything's been given away for now. Check back soon."
+                  : (res?.loseCopy || "Come back tomorrow for another free try.")}
+              </p>
+            </div>
+            {res?.canReroll && !usedReroll && !res?.soldOut && (
+              <button onClick={()=>roll(picked, res.playToken)} style={{...btnP(),color:"#000",fontSize:15,fontWeight:700,padding:"14px",width:"100%"}}>
+                Try once more
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ---- Claimed ---- */}
+        {stage==="claimed" && prize && (
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:52,marginBottom:14 }}>🎉</div>
+            <div style={{ background:C.vi,borderRadius:16,padding:"24px",marginBottom:18,boxShadow:`0 12px 32px ${C.vi}40` }}>
+              <div style={{fontSize:11,color:"#000",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:10}}>{prize.label}</div>
+              <a href={prize.url} target="_blank" rel="noopener noreferrer"
+                style={{ display:"inline-block",background:"#000",color:C.vi,borderRadius:10,padding:"12px 24px",fontSize:14,fontWeight:800,textDecoration:"none" }}>
+                Open my prize
+              </a>
+            </div>
+            <p style={{fontSize:12,color:C.t3,lineHeight:1.55}}>
+              We've sent a copy to {email}. Save this link — it's yours.
+            </p>
+          </div>
+        )}
+
+        <div style={{textAlign:"center",marginTop:32,paddingTop:18,borderTop:`1px solid ${C.b1}`}}>
+          <div style={{fontSize:10,color:C.t4}}>Powered by Xhibitur Rewards</div>
+        <div style={{marginTop:8,display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
+          <span onClick={()=>setLegal("privacy")} style={{fontSize:10,color:C.t3,cursor:"pointer",textDecoration:"underline"}}>Privacy Policy</span>
+          <span onClick={()=>setLegal("terms")} style={{fontSize:10,color:C.t3,cursor:"pointer",textDecoration:"underline"}}>Terms of Use</span>
+        </div>
+        {legal && <LegalModal type={legal} onClose={()=>setLegal(null)}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MysteryPage() {
+  const { user } = useAuth();
+  const w=useW(); const mob=w<640;
+  const [camps,setCamps]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [sel,setSel]=useState(null);
+  const [msg,setMsg]=useState("");
+  const si={...inp,fontSize:14,padding:"11px 13px",background:C.bg3,border:`1px solid ${C.b2}`};
+
+  // form
+  const [name,setName]=useState("");
+  const [displayName,setDisplayName]=useState("");
+  const [slug,setSlug]=useState("");
+  const [winRate,setWinRate]=useState(40);
+  const [allowReroll,setAllowReroll]=useState(true);
+  const [active,setActive]=useState(true);
+  const [termsUrl,setTermsUrl]=useState("");
+  const [privacyUrl,setPrivacyUrl]=useState("");
+  const [winCopy,setWinCopy]=useState("");
+  const [loseCopy,setLoseCopy]=useState("");
+  const [bulk,setBulk]=useState("");
+  const [bulkLabel,setBulkLabel]=useState("");
+  const [busy,setBusy]=useState(false);
+
+  const api = (payload) => fetch("/.netlify/functions/mystery-admin", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ userEmail:user?.email, ...payload }),
+  }).then(r=>r.json().then(d=>({ ok:r.ok, d })));
+
+  const load = () => {
+    if (!user?.email) return;
+    api({ action:"load" }).then(({d})=>{ if(d.campaigns) setCamps(d.campaigns); }).finally(()=>setLoading(false));
+  };
+  useEffect(load,[user?.email]);
+
+  const edit = c => {
+    setSel(c); setMsg("");
+    setName(c.name||""); setDisplayName(c.display_name||""); setSlug(c.slug||"");
+    setWinRate(Math.round((c.win_rate ?? .4)*100));
+    setAllowReroll(c.allow_reroll !== false);
+    setActive(c.active !== false);
+    setTermsUrl(c.terms_url||""); setPrivacyUrl(c.privacy_url||"");
+    setWinCopy(c.win_copy||""); setLoseCopy(c.lose_copy||"");
+    setBulk(""); setBulkLabel("");
+  };
+
+  const blank = () => {
+    setSel({ id:null }); setMsg("");
+    setName(""); setDisplayName(""); setSlug(""); setWinRate(40); setAllowReroll(true); setActive(true);
+    setTermsUrl(""); setPrivacyUrl(""); setWinCopy(""); setLoseCopy(""); setBulk(""); setBulkLabel("");
+  };
+
+  const save = async () => {
+    if (!name.trim()) { setMsg("Give the giveaway a name."); return; }
+    if (!termsUrl.trim()) { setMsg("An Official Rules URL is required before this giveaway can run."); return; }
+    setBusy(true); setMsg("");
+    const { ok, d } = await api({ action:"save", campaign:{
+      id: sel?.id || undefined, name:name.trim(), displayName:displayName.trim(), slug: slug.trim() || name.trim(),
+      winRate: Math.max(0,Math.min(100,Number(winRate)))/100,
+      allowReroll, active, termsUrl:termsUrl.trim(), privacyUrl:privacyUrl.trim(),
+      winCopy:winCopy.trim(), loseCopy:loseCopy.trim(),
+    }});
+    setBusy(false);
+    if (!ok) { setMsg(d.message || d.error || "Couldn't save."); return; }
+    setMsg("Saved.");
+    setSel(s=>({ ...(s||{}), id:d.id, slug:d.slug }));
+    load();
+  };
+
+  const upload = async () => {
+    if (!sel?.id) { setMsg("Save the giveaway before adding prizes."); return; }
+    if (!bulk.trim()) { setMsg("Paste some URLs first."); return; }
+    setBusy(true); setMsg("");
+    const { ok, d } = await api({ action:"addPrizes", campaignId:sel.id, raw:bulk, defaultLabel:bulkLabel.trim()||"Prize" });
+    setBusy(false);
+    if (!ok) { setMsg(d.message || (d.error==="no_valid_urls" ? "No valid URLs found. Each line needs to start with http:// or https://" : "Upload failed.")); return; }
+    setMsg(`Added ${d.added} prize${d.added===1?"":"s"}${d.skipped?`, skipped ${d.skipped}`:""}.`);
+    setBulk(""); load();
+  };
+
+  const del = async c => {
+    if (!window.confirm(`Delete "${c.name}" and all its prizes? This can't be undone.`)) return;
+    await api({ action:"delete", campaignId:c.id });
+    setSel(null); load();
+  };
+
+  const publicUrl = sel?.slug ? `https://rewards.xhibitur.com/#/play/${sel.slug}` : "";
+
+  return (
+    <DashShell>
+      <PgHead title="Mystery Box" sub="A free-to-play giveaway. Scan, pick a box, win a prize."
+        action={<button onClick={blank} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New giveaway</button>}/>
+
+      {loading ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div> : (
+        <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+
+          {camps.length===0 && !sel && (
+            <Empty icon="🎁" title="No giveaways yet" body="Create one, paste in your prize links, and share the QR."
+              cta={<button onClick={blank} style={{ ...btnP(),padding:"12px 24px" }}>Create giveaway</button>}/>
+          )}
+
+          {camps.map(c=>(
+            <div key={c.id} style={{ background:C.bg2,border:`1px solid ${sel?.id===c.id?C.vi:C.b2}`,borderRadius:14,padding:16 }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap" }}>
+                <div>
+                  <div style={{ fontSize:15,fontWeight:800,color:C.t1,marginBottom:4 }}>{c.name} {!c.active && <span style={{fontSize:11,color:C.t4,fontWeight:600}}>· paused</span>}</div>
+                  <div style={{ fontSize:12,color:C.t4 }}>/play/{c.slug} · {Math.round((c.win_rate??.4)*100)}% win rate</div>
+                </div>
+                <div style={{ display:"flex",gap:8 }}>
+                  <button onClick={()=>edit(c)} style={{...btnG(),fontSize:12,padding:"8px 14px"}}>Edit</button>
+                  <button onClick={()=>del(c)} style={{...btnG(),fontSize:12,padding:"8px 14px",color:C.err}}>Delete</button>
+                </div>
+              </div>
+              <div style={{ display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginTop:14 }}>
+                {[["Prizes left",c.available],["Claimed",c.claimed],["Plays",c.totalPlays],["Wins",c.totalWins]].map(([k,v])=>(
+                  <div key={k} style={{ background:C.bg3,borderRadius:10,padding:"10px 12px" }}>
+                    <div style={{ fontSize:10,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",marginBottom:4 }}>{k}</div>
+                    <div style={{ fontSize:18,fontWeight:900,color:v===0&&k==="Prizes left"?C.err:C.t1 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {c.available===0 && c.totalPrizes>0 && (
+                <div style={{ fontSize:12,color:C.err,marginTop:10 }}>Out of prizes — players will be told everything's claimed until you add more.</div>
+              )}
+            </div>
+          ))}
+
+          {sel && (
+            <div style={{ background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:14,padding:18,display:"flex",flexDirection:"column",gap:14 }}>
+              <div style={{ fontSize:14,fontWeight:800,color:C.t1 }}>{sel.id?"Edit giveaway":"New giveaway"}</div>
+
+              <div>
+                <label style={lbl}>Name</label>
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Xie Bao Summer Drop" style={si}/>
+                <div style={{fontSize:11,color:C.t4,marginTop:6}}>Internal only \u2014 guests never see this.</div>
+              </div>
+
+              <div>
+                <label style={lbl}>Business name shown to guests (optional)</label>
+                <input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="e.g. Xie Bao Crabhouse" style={si}/>
+                <div style={{fontSize:11,color:C.t4,marginTop:6}}>Appears under the headline on the play page. Leave blank to show no business name.</div>
+              </div>
+
+              <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12 }}>
+                <div>
+                  <label style={lbl}>Link name</label>
+                  <input value={slug} onChange={e=>setSlug(e.target.value)} placeholder="auto from name" style={si}/>
+                </div>
+                <div>
+                  <label style={lbl}>Win rate: {winRate}%</label>
+                  <input type="range" min="0" max="100" value={winRate} onChange={e=>setWinRate(e.target.value)} style={{width:"100%",accentColor:C.vi,marginTop:10}}/>
+                </div>
+              </div>
+
+              <div style={{ display:"flex",gap:18,flexWrap:"wrap" }}>
+                <label style={{ display:"flex",gap:8,alignItems:"center",fontSize:13,color:C.t3,cursor:"pointer" }}>
+                  <input type="checkbox" checked={allowReroll} onChange={e=>setAllowReroll(e.target.checked)} style={{accentColor:C.vi,width:16,height:16}}/>
+                  Allow one second try
+                </label>
+                <label style={{ display:"flex",gap:8,alignItems:"center",fontSize:13,color:C.t3,cursor:"pointer" }}>
+                  <input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)} style={{accentColor:C.vi,width:16,height:16}}/>
+                  Live
+                </label>
+              </div>
+
+              <div style={{ background:C.vi+"0c",border:`1px solid ${C.vi}22`,borderRadius:10,padding:14 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:C.vi,marginBottom:10 }}>OFFICIAL RULES (REQUIRED)</div>
+                <div>
+                  <label style={lbl}>Official Rules URL</label>
+                  <input value={termsUrl} onChange={e=>setTermsUrl(e.target.value)} placeholder="https://…/giveaway-rules" style={si}/>
+                </div>
+                <div style={{ fontSize:11,color:C.t4,marginTop:8,lineHeight:1.55 }}>
+                  Shown next to the consent checkbox before anyone can claim a prize. It must be a real, reachable page naming the sponsoring business, the entry period, the odds, the prize and its value, and the eligibility limits. The Xhibitur Privacy Policy is linked automatically — you do not need to supply one.
+                </div>
+              </div>
+
+              <div style={{ display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12 }}>
+                <div>
+                  <label style={lbl}>Message when they win</label>
+                  <input value={winCopy} onChange={e=>setWinCopy(e.target.value)} placeholder="Show this at the counter." style={si}/>
+                </div>
+                <div>
+                  <label style={lbl}>Message when they don't</label>
+                  <input value={loseCopy} onChange={e=>setLoseCopy(e.target.value)} placeholder="Come back tomorrow for another try." style={si}/>
+                </div>
+              </div>
+
+              <button onClick={save} disabled={busy} style={{...btnP(),fontSize:14,padding:"13px"}}>{busy?"Saving…":"Save giveaway"}</button>
+
+              {sel.id && (
+                <>
+                  <div style={{ height:1,background:C.b1,margin:"4px 0" }}/>
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:800,color:C.t1,marginBottom:8 }}>Add prizes</div>
+                    <div style={{ fontSize:12,color:C.t4,marginBottom:10,lineHeight:1.55 }}>
+                      One link per line. Each is handed to exactly one winner. To name them individually use <code style={{color:C.vi}}>Label | https://…</code>
+                    </div>
+                    <input value={bulkLabel} onChange={e=>setBulkLabel(e.target.value)} placeholder="Default prize name, e.g. Free bao bun" style={{...si,marginBottom:10}}/>
+                    <textarea value={bulk} onChange={e=>setBulk(e.target.value)} rows={6}
+                      placeholder={"https://example.com/code/AAA111\nhttps://example.com/code/BBB222\nFree dessert | https://example.com/code/CCC333"}
+                      style={{...si,width:"100%",fontFamily:"monospace",fontSize:12,resize:"vertical"}}/>
+                    <button onClick={upload} disabled={busy} style={{...btnG(),fontSize:13,padding:"11px 18px",marginTop:10}}>{busy?"Uploading…":"Upload prize links"}</button>
+                  </div>
+
+                  {publicUrl && (
+                    <div style={{ background:C.bg3,borderRadius:10,padding:14 }}>
+                      <div style={{ fontSize:11,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",marginBottom:6 }}>Share this link</div>
+                      <div style={{ fontSize:13,color:C.vi,fontWeight:600,wordBreak:"break-all",marginBottom:10 }}>{publicUrl}</div>
+                      <button onClick={()=>{navigator.clipboard?.writeText(publicUrl); setMsg("Link copied.");}} style={{...btnG(),fontSize:12,padding:"8px 14px"}}>Copy link</button>
+                      <div style={{ fontSize:11,color:C.t4,marginTop:10,lineHeight:1.5 }}>Point a Smart QR code at this URL to put it on a sticker.</div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {msg && <div style={{ fontSize:13,color:msg.startsWith("Saved")||msg.startsWith("Added")||msg.startsWith("Link")?C.vi:C.err,textAlign:"center" }}>{msg}</div>}
+              <button onClick={()=>setSel(null)} style={{...btnG(),fontSize:13,padding:"10px"}}>Close</button>
+            </div>
+          )}
+        </div>
+      )}
+    </DashShell>
+  );
+}
+
+const PROTECTED=["dashboard","dashboard/qr","dashboard/rewards","dashboard/analytics","dashboard/account","dashboard/stickers","dashboard/broadcast","dashboard/mystery","dashboard/admin"];
 
 function AppCore() {
   const { user,loading } = useAuth(); const { page,nav } = useNav();
@@ -2342,6 +2902,8 @@ function AppCore() {
   if (page.startsWith("checkin")) return <CheckInPage/>;
   if (window.location.hash.includes("access_token")&&window.location.hash.includes("type=recovery")) return <ResetPassword/>;
 
+  if (page.toLowerCase().startsWith("play/")) return <MysteryBoxPage/>;
+
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
     "forgot-password":<ForgotPassword/>,
@@ -2353,6 +2915,7 @@ function AppCore() {
     "dashboard/account":<AccountPage/>,
     "dashboard/stickers":<StickerOrderPage/>,
     "dashboard/broadcast":<BroadcastPage/>,
+    "dashboard/mystery":<MysteryPage/>,
     "dashboard/admin": user?.email===ADMIN_EMAIL ? <AdminPage/> : <Landing/>,
   };
   return (
