@@ -2,9 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Xhibitur Rewards</title>
+
+    <title>Xhibitur Rewards — QR Loyalty That Brings Customers Back</title>
+    <meta name="description" content="QR loyalty for small businesses. One sticker on the counter, automatic win-back emails to customers who stop coming in, and proof of the revenue it brought back. $49.99/month." />
+    <link rel="canonical" href="https://rewards.xhibitur.com/" />
+    <meta name="theme-color" content="#000000" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- Social preview: Instagram, iMessage, WhatsApp, LinkedIn, Slack -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Xhibitur Rewards" />
+    <meta property="og:url" content="https://rewards.xhibitur.com/" />
+    <meta property="og:title" content="Your regulars come back on their own." />
+    <meta property="og:description" content="QR loyalty for small businesses. One sticker on the counter, automatic win-back emails, and proof of the revenue it brought in." />
+    <meta property="og:image" content="https://rewards.xhibitur.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Xhibitur Rewards — QR loyalty for small businesses" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Your regulars come back on their own." />
+    <meta name="twitter:description" content="QR loyalty for small businesses. One sticker on the counter, automatic win-back emails, and proof of the revenue it brought in." />
+    <meta name="twitter:image" content="https://rewards.xhibitur.com/og.png" />
+
     <style>
       html, body, #root {
         margin: 0;
@@ -12,15 +35,52 @@
         background: #000;
         min-height: 100vh;
         width: 100%;
-      } 
+      }
     </style>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VDY54H7EXK"></script>
+
+    <!--
+      Analytics is consent-gated. Nothing from Google loads and no cookie is
+      set until the visitor accepts. The banner in App.jsx calls
+      window.xbConsent.accept(); this block only restores a prior choice.
+    -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-VDY54H7EXK');
+      (function () {
+        var KEY = "xb_cookie_consent";
+        var GA_ID = "G-VDY54H7EXK";
+        var loaded = false;
+
+        function load() {
+          if (loaded) return;
+          loaded = true;
+          var s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function () { window.dataLayer.push(arguments); };
+          window.gtag("js", new Date());
+          window.gtag("config", GA_ID, { anonymize_ip: true });
+        }
+
+        function read() {
+          try { return localStorage.getItem(KEY); } catch (e) { return null; }
+        }
+
+        window.xbConsent = {
+          status: read(),
+          accept: function () {
+            try { localStorage.setItem(KEY, "accepted"); } catch (e) {}
+            this.status = "accepted";
+            load();
+          },
+          decline: function () {
+            try { localStorage.setItem(KEY, "declined"); } catch (e) {}
+            this.status = "declined";
+          }
+        };
+
+        if (window.xbConsent.status === "accepted") load();
+      })();
     </script>
   </head>
   <body>
