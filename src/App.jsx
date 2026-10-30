@@ -1046,7 +1046,8 @@ function DashHome() {
   const hr = new Date().getHours();
   const greet = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
   const isTrial = user?.plan==="trial";
-  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0 });
+  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0,
+    bands:{active:0,cooling:0,risk:0,lapsed:0}, winback:{sent:0,returned:0,recovered:0}, avgCheck:0, people:[] });
   const [loading,setLoading] = useState(true);
 
   useEffect(()=>{
@@ -1067,11 +1068,51 @@ function DashHome() {
           <button onClick={()=>nav("pricing")} style={{ ...btnP(),fontSize:13,padding:"9px 18px",width:mob?"100%":"auto" }}>Activate plan →</button>
         </div>
       )}
+      {/* Recovered revenue: the number the whole product is judged on. */}
+      {(() => {
+        const wb = stats.winback || { sent:0,returned:0,recovered:0 };
+        const bd = stats.bands || { active:0,cooling:0,risk:0,lapsed:0 };
+        const avg = Number(stats.avgCheck)||0;
+        const atRisk = (bd.risk||0) + (bd.lapsed||0);
+        const rate = wb.sent>0 ? Math.round((wb.returned/wb.sent)*100) : 0;
+        return (
+          <div onClick={()=>nav("dashboard/analytics")} style={{ ...card(),padding:mob?18:22,marginBottom:14,cursor:"pointer",
+                        border:`1px solid ${C.vi}33`,background:`linear-gradient(135deg, ${C.viDim} 0%, ${C.bg2} 70%)` }}>
+            <div style={{ fontSize:11,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",fontWeight:700,marginBottom:8 }}>
+              Revenue recovered by win-back
+            </div>
+            {loading ? (
+              <div style={{ fontSize:mob?30:38,fontWeight:900,color:C.t4,lineHeight:1 }}>–</div>
+            ) : avg<=0 ? (
+              <>
+                <div style={{ fontSize:mob?20:24,fontWeight:800,color:C.t2,letterSpacing:"-.02em",lineHeight:1.25 }}>
+                  Add your average check to start tracking this
+                </div>
+                <div style={{ fontSize:13,color:C.t4,marginTop:8 }}>Takes one field in Analytics →</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:mob?34:44,fontWeight:900,color:C.vi,letterSpacing:"-.035em",lineHeight:1 }}>
+                  ${Math.round(wb.recovered).toLocaleString()}
+                </div>
+                <div style={{ fontSize:13,color:C.t3,marginTop:9 }}>
+                  {wb.returned} of {wb.sent} came back after a win-back email · {rate}% return rate
+                </div>
+              </>
+            )}
+            {!loading && atRisk>0 && (
+              <div style={{ fontSize:12.5,color:"#f97316",marginTop:12,fontWeight:700 }}>
+                ⚠ {atRisk} customer{atRisk===1?"":"s"} haven't been in for 30+ days
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
         <Stat icon="▦" label="Check-In Visits" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
         <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
-        <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.em}/>
-        <Stat icon="◈" label="Growth" value="0%" accent={C.cy}/>
+        <Stat icon="👥" label="Known Customers" value={loading?"–":(stats.people?stats.people.length:stats.members).toLocaleString()} accent={C.em}/>
+        <Stat icon="⚠" label="At Risk" value={loading?"–":(((stats.bands||{}).risk||0)+((stats.bands||{}).lapsed||0)).toLocaleString()} accent="#f97316"/>
       </div>
       <div style={{ ...card(),padding:mob?16:20,marginBottom:14 }}>
         <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Quick actions</div>
@@ -1092,8 +1133,33 @@ function DashHome() {
         </div>
       </div>
       <div style={{ ...card(),padding:mob?16:20 }}>
-        <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Live activity</div>
-        <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"24px 0" }}>No activity yet. Activity will appear as customers scan your QR codes.</div>
+        <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Recent activity</div>
+        {(() => {
+          const recent = (stats.people||[])
+            .filter(p=>p.lastVisit)
+            .sort((a,b)=> new Date(b.lastVisit) - new Date(a.lastVisit))
+            .slice(0,6);
+          if (loading) return <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"24px 0" }}>Loading…</div>;
+          if (recent.length===0) return <div style={{ fontSize:13,color:C.t4,textAlign:"center",padding:"24px 0" }}>No activity yet. Check-ins will appear here as customers scan your QR codes.</div>;
+          return (
+            <div style={{ display:"flex",flexDirection:"column",gap:7 }}>
+              {recent.map(p=>{
+                const col = p.band==="active"?"#10b981":p.band==="cooling"?"#eab308":p.band==="risk"?"#f97316":"#ef4444";
+                const ago = p.days==null?"—":p.days===0?"today":p.days===1?"yesterday":`${p.days} days ago`;
+                return (
+                  <div key={p.email+p.slug} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",
+                                background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:9,borderLeft:`2px solid ${col}` }}>
+                    <div style={{ minWidth:0,flex:1 }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{p.email}</div>
+                      <div style={{ fontSize:11,color:C.t4 }}>{p.location} · {p.visits} visit{p.visits===1?"":"s"}</div>
+                    </div>
+                    <div style={{ fontSize:11,color:C.t4,flexShrink:0 }}>{ago}</div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </DashShell>
   );
@@ -1659,27 +1725,303 @@ function RewardsPage({ programs, setPrograms }) {
   );
 }
 
+const BANDS = [
+  { id:"active",  lb:"Active",   note:"Seen in the last 14 days",     col:"#10b981" },
+  { id:"cooling", lb:"Cooling",  note:"15–29 days since last visit",  col:"#eab308" },
+  { id:"risk",    lb:"At risk",  note:"30–59 days — send the offer",  col:"#f97316" },
+  { id:"lapsed",  lb:"Lapsed",   note:"60+ days — likely gone",       col:"#ef4444" },
+];
+const bandOf = id => BANDS.find(b=>b.id===id) || BANDS[3];
+const money = n => "$" + Math.round(n||0).toLocaleString();
+
 function AnalyticsPage() {
-  const { user } = useAuth();
+  const { user } = useAuth(); const { nav } = useNav();
   const w=useW(); const mob=w<640;
-  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0, byCode:[] });
+  const [stats,setStats] = useState({ members:0, redemptions:0, scans:0, byCode:[], people:[],
+    bands:{active:0,cooling:0,risk:0,lapsed:0}, winback:{sent:0,returned:0,recovered:0}, avgCheck:0 });
   const [loading,setLoading] = useState(true);
   const [copied,setCopied] = useState("");
+  const [ac,setAc] = useState("");
+  const [acSaving,setAcSaving] = useState(false);
+  const [acSaved,setAcSaved] = useState(false);
+  const [filter,setFilter] = useState("all");
 
-  useEffect(()=>{
-    if (!user?.email) return;
-    fetch("/.netlify/functions/analytics-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userEmail:user.email }) })
-      .then(r=>r.json()).then(d=>{ if(!d.error) setStats(d); }).finally(()=>setLoading(false));
-  },[user?.email]);
+  const load = () => fetch("/.netlify/functions/analytics-data", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userEmail:user.email }) })
+      .then(r=>r.json()).then(d=>{ if(!d.error){ setStats(d); if(d.avgCheck) setAc(String(d.avgCheck)); } }).finally(()=>setLoading(false));
+
+  useEffect(()=>{ if (user?.email) load(); },[user?.email]);
+
+  const saveAvgCheck = async () => {
+    setAcSaving(true); setAcSaved(false);
+    try {
+      await fetch("/.netlify/functions/analytics-data", { method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ userEmail:user.email, action:"saveAvgCheck", avgCheck:Number(ac)||0 }) });
+      await load();
+      setAcSaved(true); setTimeout(()=>setAcSaved(false),2000);
+    } catch {}
+    setAcSaving(false);
+  };
+
+  const people = stats.people || [];
+  const bands = stats.bands || {active:0,cooling:0,risk:0,lapsed:0};
+  const wb = stats.winback || {sent:0,returned:0,recovered:0};
+  const known = people.length;
+  const returnRate = wb.sent > 0 ? Math.round((wb.returned/wb.sent)*100) : 0;
+  const avg = Number(stats.avgCheck)||0;
+  const atRisk = (bands.risk||0) + (bands.lapsed||0);
+  const atRiskValue = avg > 0 ? people.filter(p=>p.band==="risk"||p.band==="lapsed").reduce((s,p)=>s+(p.value||0),0) : 0;
+  const shown = filter==="all" ? people : people.filter(p=>p.band===filter);
+  const recoveries = people.filter(p=>p.returned);
+
+  const exportCsv = () => {
+    const rows = [["email","location","band","days_since_visit","visits","stamps","goal","lifetime_value","winback_sent","returned","promo_opt_in","first_seen","last_visit"]];
+    for (const p of people) rows.push([p.email,p.location,p.band,p.days==null?"":p.days,p.visits,p.stamps,p.goal,
+      p.value==null?"":p.value, p.winbackSent?"yes":"no", p.returned?"yes":"no", p.optIn?"yes":"no",
+      p.firstSeen?p.firstSeen.slice(0,10):"", p.lastVisit?p.lastVisit.slice(0,10):""]);
+    const csv = rows.map(r=>r.map(c=>{ const s=String(c==null?"":c); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+    a.download = `xhibitur-customers-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+
+  const sub = { fontSize:11,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",fontWeight:700 };
+  const pill = (col) => ({ display:"inline-block",fontSize:10,fontWeight:800,padding:"3px 8px",borderRadius:20,
+    background:col+"1c",color:col,border:`1px solid ${col}38`,textTransform:"uppercase",letterSpacing:".05em",whiteSpace:"nowrap" });
+  const ghost = { fontSize:12,fontWeight:700,padding:"8px 14px",background:"transparent",color:C.t2,
+    border:`1px solid ${C.b2}`,borderRadius:9,cursor:"pointer" };
 
   return (
     <DashShell>
-      <PgHead title="Analytics" sub="Check-in visits, redemptions and member growth."/>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16 }}>
-        <Stat icon="◈" label="Check-In Visits" value={loading?"–":stats.scans.toLocaleString()} accent={C.vi}/>
-        <Stat icon="◆" label="Redeemed" value={loading?"–":stats.redemptions.toLocaleString()} accent={C.fu}/>
-        <Stat icon="👥" label="Members" value={loading?"–":stats.members.toLocaleString()} accent={C.cy}/>
+      <PgHead title="Analytics" sub="Who's coming back, who's slipping away, and what the win-back recovered."/>
+
+      {/* ---- Recovered revenue ---- */}
+      <div style={{ ...card(),padding:mob?18:24,marginBottom:14,border:`1px solid ${C.vi}33`,
+                    background:`linear-gradient(135deg, ${C.viDim} 0%, ${C.bg2} 70%)` }}>
+        <div style={{ ...sub,marginBottom:10 }}>Revenue recovered by win-back</div>
+        {avg <= 0 ? (
+          <>
+            <div style={{ fontSize:mob?30:40,fontWeight:900,color:C.t4,letterSpacing:"-.03em",lineHeight:1 }}>— </div>
+            <div style={{ fontSize:13,color:C.t3,marginTop:10,lineHeight:1.6,maxWidth:460 }}>
+              Enter your average check below and every returning customer gets a dollar figure. This is the number you show a client at the end of the pilot.
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:mob?34:46,fontWeight:900,color:C.vi,letterSpacing:"-.035em",lineHeight:1 }}>{money(wb.recovered)}</div>
+            <div style={{ fontSize:13,color:C.t3,marginTop:10 }}>
+              {wb.returned} of {wb.sent} customer{wb.sent===1?"":"s"} came back after a win-back email · {returnRate}% return rate
+            </div>
+          </>
+        )}
+        <div style={{ display:"flex",gap:mob?16:28,marginTop:18,flexWrap:"wrap" }}>
+          {[["Emails sent",wb.sent,C.t1],["Came back",wb.returned,"#10b981"],["Return rate",returnRate+"%",C.cy],
+            ["At-risk value",avg>0?money(atRiskValue):"—","#f97316"]].map(([k,v,col])=>(
+            <div key={k}>
+              <div style={{ ...sub,fontSize:10,marginBottom:3 }}>{k}</div>
+              <div style={{ fontSize:19,fontWeight:900,color:col }}>{typeof v==="number"?v.toLocaleString():v}</div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* ---- Average check ---- */}
+      <div style={{ ...card(),padding:mob?14:18,marginBottom:14,display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap" }}>
+        <div style={{ flex:"1 1 180px",minWidth:0 }}>
+          <label style={{ ...sub,display:"block",marginBottom:7 }}>Average check per visit</label>
+          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+            <span style={{ fontSize:17,fontWeight:800,color:C.t4 }}>$</span>
+            <input type="number" min="0" step="0.01" value={ac} onChange={e=>setAc(e.target.value)} placeholder="24.00"
+              style={{...inp,width:120,padding:"11px 13px",fontSize:15,fontWeight:700,background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:10}}
+              onFocus={e=>e.target.style.borderColor=C.vi} onBlur={e=>e.target.style.borderColor=C.b2}/>
+            <button onClick={saveAvgCheck} disabled={acSaving}
+              style={{ fontSize:13,fontWeight:800,padding:"11px 18px",background:C.vi,color:"#000",border:"none",borderRadius:10,cursor:"pointer" }}>
+              {acSaving?"Saving…":acSaved?"Saved ✓":"Save"}
+            </button>
+          </div>
+        </div>
+        <div style={{ flex:"1 1 240px",fontSize:12,color:C.t4,lineHeight:1.6,paddingBottom:4 }}>
+          Used to put a dollar value on each customer and on everyone the win-back brought back. Ask the owner for their average ticket — it does not need to be exact.
+        </div>
+      </div>
+
+      {/* ---- Headline counts ---- */}
+      <div style={{ display:"grid",gridTemplateColumns:mob?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:10,marginBottom:16 }}>
+        <Stat icon="◈" label="Check-In Visits" value={loading?"–":(stats.scans||0).toLocaleString()} accent={C.vi}/>
+        <Stat icon="◆" label="Redeemed" value={loading?"–":(stats.redemptions||0).toLocaleString()} accent={C.fu}/>
+        <Stat icon="👥" label="Known Customers" value={loading?"–":known.toLocaleString()} accent={C.cy}/>
+        <Stat icon="⚠" label="At Risk" value={loading?"–":atRisk.toLocaleString()} accent="#f97316"/>
+      </div>
+
+      {/* ---- Risk ladder ---- */}
+      <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
+        <div style={{ display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:16 }}>
+          <div style={{ fontWeight:700,fontSize:14,color:C.t2 }}>Recency ladder</div>
+          <div style={{ fontSize:11,color:C.t4 }}>{known.toLocaleString()} customer{known===1?"":"s"} with an email</div>
+        </div>
+        {loading ? <div style={{ textAlign:"center",padding:"24px 0",color:C.t4,fontSize:14 }}>Loading…</div>
+        : known === 0 ? (
+          <div style={{ textAlign:"center",padding:"24px 0",color:C.t4,fontSize:14,lineHeight:1.6 }}>
+            No check-ins with an email yet.<br/>Once customers check in, they'll be sorted here by how long it's been.
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+            {BANDS.map(b=>{
+              const n = bands[b.id]||0;
+              const pct = known>0 ? Math.round((n/known)*100) : 0;
+              const val = avg>0 ? people.filter(p=>p.band===b.id).reduce((s,p)=>s+(p.value||0),0) : 0;
+              return (
+                <div key={b.id} onClick={()=>setFilter(filter===b.id?"all":b.id)} style={{ cursor:"pointer" }}>
+                  <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6 }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:9,minWidth:0 }}>
+                      <span style={{ width:8,height:8,borderRadius:8,background:b.col,flexShrink:0 }}/>
+                      <span style={{ fontSize:13,fontWeight:700,color:C.t1 }}>{b.lb}</span>
+                      {!mob && <span style={{ fontSize:11,color:C.t4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{b.note}</span>}
+                    </div>
+                    <div style={{ display:"flex",alignItems:"baseline",gap:10,flexShrink:0 }}>
+                      {avg>0 && val>0 && <span style={{ fontSize:11,color:C.t4 }}>{money(val)}</span>}
+                      <span style={{ fontSize:17,fontWeight:900,color:n===0?C.t4:b.col }}>{n}</span>
+                      <span style={{ fontSize:11,color:C.t4,width:34,textAlign:"right" }}>{pct}%</span>
+                    </div>
+                  </div>
+                  <div style={{ height:6,background:C.bg3,borderRadius:6,overflow:"hidden" }}>
+                    <div style={{ height:"100%",width:`${pct}%`,background:b.col,borderRadius:6,transition:"width .3s" }}/>
+                  </div>
+                </div>
+              );
+            })}
+            {atRisk > 0 && (
+              <div style={{ marginTop:6,padding:"13px 15px",background:"#f9731610",border:"1px solid #f9731630",borderRadius:11,
+                            display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap" }}>
+                <div style={{ fontSize:13,color:C.t2,lineHeight:1.55 }}>
+                  <b style={{color:C.t1}}>{atRisk} customer{atRisk===1?"":"s"}</b> haven't been in for 30+ days
+                  {avg>0 && <> — about <b style={{color:"#f97316"}}>{money(atRiskValue)}</b> of past spend</>}.
+                </div>
+                <button onClick={()=>nav("dashboard/rewards")} style={ghost}>Set the win-back offer →</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ---- Recoveries ---- */}
+      {recoveries.length > 0 && (
+        <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
+          <div style={{ fontWeight:700,fontSize:14,color:C.t2,marginBottom:4 }}>Won back</div>
+          <div style={{ fontSize:11,color:C.t4,marginBottom:14 }}>Got a win-back email, then came back in</div>
+          <div style={{ display:"flex",flexDirection:"column",gap:7 }}>
+            {recoveries.slice(0,12).map(p=>(
+              <div key={p.email+p.slug} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,
+                        background:"#10b9810c",border:"1px solid #10b98128",borderRadius:9,padding:"10px 13px",flexWrap:"wrap" }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13,fontWeight:700,color:C.t1,wordBreak:"break-all" }}>{p.email}</div>
+                  <div style={{ fontSize:11,color:C.t4 }}>{p.location} · {p.visits} visit{p.visits===1?"":"s"}</div>
+                </div>
+                <div style={{ fontSize:13,fontWeight:900,color:"#10b981",flexShrink:0 }}>
+                  {p.value!=null ? money(p.value) : "returned"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Customers ---- */}
+      <div style={{ ...card(),padding:mob?14:20,marginBottom:14 }}>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:14 }}>
+          <div>
+            <div style={{ fontWeight:700,fontSize:14,color:C.t2 }}>Customers</div>
+            <div style={{ fontSize:11,color:C.t4,marginTop:2 }}>
+              {avg>0?"Most valuable first":"Most visits first"}
+              {stats.unreachable>0 && ` · ${stats.unreachable} opted out of promos`}
+            </div>
+          </div>
+          {known>0 && <button onClick={exportCsv} style={ghost}>Export CSV</button>}
+        </div>
+
+        {known>0 && (
+          <div style={{ display:"flex",gap:6,marginBottom:14,flexWrap:"wrap" }}>
+            {[{id:"all",lb:"All",col:C.vi},...BANDS].map(b=>(
+              <button key={b.id} onClick={()=>setFilter(b.id)}
+                style={{ fontSize:11,fontWeight:800,padding:"6px 12px",borderRadius:20,cursor:"pointer",
+                         background:filter===b.id?b.col+"20":"transparent",
+                         color:filter===b.id?b.col:C.t4,
+                         border:`1px solid ${filter===b.id?b.col+"55":C.b2}` }}>
+                {b.lb}{b.id!=="all" && ` ${bands[b.id]||0}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading ? <div style={{ textAlign:"center",padding:"24px 0",color:C.t4,fontSize:14 }}>Loading…</div>
+        : known === 0 ? (
+          <div style={{ textAlign:"center",padding:"24px 0",color:C.t4,fontSize:14,lineHeight:1.6 }}>
+            Nobody has checked in with an email yet.
+          </div>
+        ) : shown.length === 0 ? (
+          <div style={{ textAlign:"center",padding:"24px 0",color:C.t4,fontSize:14 }}>Nobody in this band.</div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",gap:7 }}>
+            {!mob && (
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 84px 62px 72px 76px",gap:10,padding:"0 13px 5px",...sub,fontSize:10 }}>
+                <div>Customer</div>
+                <div style={{textAlign:"center"}}>Status</div>
+                <div style={{textAlign:"right"}}>Visits</div>
+                <div style={{textAlign:"right"}}>Stamps</div>
+                <div style={{textAlign:"right"}}>{avg>0?"Value":"Last seen"}</div>
+              </div>
+            )}
+            {shown.slice(0,250).map(p=>{
+              const b = bandOf(p.band);
+              const ago = p.days==null ? "—" : p.days===0 ? "today" : `${p.days}d ago`;
+              return (
+                <div key={p.email+p.slug} style={{ background:C.bg3,border:`1px solid ${C.b2}`,borderRadius:9,
+                              padding:mob?"11px 13px":"10px 13px",borderLeft:`2px solid ${b.col}` }}>
+                  {mob ? (
+                    <>
+                      <div style={{ display:"flex",justifyContent:"space-between",gap:8,marginBottom:6 }}>
+                        <div style={{ fontSize:13,fontWeight:700,color:C.t1,wordBreak:"break-all",minWidth:0 }}>{p.email}</div>
+                        <span style={pill(b.col)}>{b.lb}</span>
+                      </div>
+                      <div style={{ fontSize:11,color:C.t4,display:"flex",gap:12,flexWrap:"wrap" }}>
+                        <span>{p.visits} visit{p.visits===1?"":"s"}</span>
+                        <span>{p.stamps}/{p.goal} stamps</span>
+                        <span>{ago}</span>
+                        {p.value!=null && <span style={{color:C.vi,fontWeight:800}}>{money(p.value)}</span>}
+                        {!p.optIn && <span style={{color:C.t4}}>no promos</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display:"grid",gridTemplateColumns:"1fr 84px 62px 72px 76px",gap:10,alignItems:"center" }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:13,fontWeight:700,color:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                          {p.email}{!p.optIn && <span style={{color:C.t4,fontWeight:500,fontSize:11}}> · no promos</span>}
+                        </div>
+                        <div style={{ fontSize:11,color:C.t4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                          {p.location} · {ago}{p.returned?" · won back":p.winbackSent?" · emailed":""}
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"center" }}><span style={pill(b.col)}>{b.lb}</span></div>
+                      <div style={{ textAlign:"right",fontSize:15,fontWeight:900,color:C.t2 }}>{p.visits}</div>
+                      <div style={{ textAlign:"right",fontSize:13,fontWeight:700,color:C.t3 }}>{p.stamps}/{p.goal}</div>
+                      <div style={{ textAlign:"right",fontSize:13,fontWeight:900,color:p.value!=null?C.vi:C.t4 }}>
+                        {p.value!=null ? money(p.value) : ago}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {shown.length > 250 && (
+              <div style={{ fontSize:11,color:C.t4,textAlign:"center",paddingTop:6 }}>
+                Showing the top 250 of {shown.length}. Export the CSV for the full list.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ---- By QR code ---- */}
       <div style={{ ...card(),padding:mob?14:20 }}>
         <div style={{ display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:14 }}>
           <div style={{ fontWeight:700,fontSize:14,color:C.t2 }}>By QR code</div>
@@ -1695,8 +2037,7 @@ function AnalyticsPage() {
         ) : (
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {!mob && (
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 90px 90px 90px",gap:10,padding:"0 12px 6px",
-                            fontSize:10,color:C.t4,textTransform:"uppercase",letterSpacing:".08em",fontWeight:700 }}>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 90px 90px 90px",gap:10,padding:"0 12px 6px",...sub,fontSize:10 }}>
                 <div>QR code</div>
                 <div style={{textAlign:"right"}}>Visits</div>
                 <div style={{textAlign:"right"}}>Members</div>
@@ -1819,6 +2160,7 @@ function CheckInPage() {
   const [promoButtonLink,setPromoButtonLink]=useState("");
   const [bizLogo,setBizLogo]=useState("");
   const [legal,setLegal]=useState(null);
+  const [optIn,setOptIn]=useState(true);
   
   useEffect(()=>{
     if (!slug) return;
@@ -1858,7 +2200,17 @@ function CheckInPage() {
       const r = await fetch("/.netlify/functions/record-redemption", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ slug, email: email.trim().toLowerCase(), reward: rewardLabel||"reward" })
+        body:JSON.stringify({
+          slug,
+          email: email.trim().toLowerCase(),
+          reward: rewardLabel||"reward",
+          // Sent so the server can build this person's member record on the
+          // very first check-in, which is what makes them win-back eligible.
+          businessName: bizName,
+          goal,
+          rewardName: reward,
+          optIn,
+        })
       });
       if (r.status === 429) {
         const d = await r.json().catch(()=>({}));
@@ -1999,9 +2351,12 @@ function CheckInPage() {
           {/* Email Form */}
           <form onSubmit={handleCheckin} style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:20 }}>
             <div>
-              <label style={{ fontSize:12,fontWeight:600,color:C.t4,display:"block",marginBottom:8 }}>Email address</label>
+              <label style={{ fontSize:12,fontWeight:600,color:C.t4,display:"block",marginBottom:8 }}>
+                Email address <span style={{color:C.vi}}>*</span>
+              </label>
               <input
                 type="email"
+                required
                 value={email}
                 onChange={e=>setEmail(e.target.value)}
                 placeholder="you@email.com"
@@ -2009,6 +2364,9 @@ function CheckInPage() {
                 onFocus={e=>e.target.style.borderColor=C.vi}
                 onBlur={e=>e.target.style.borderColor=C.b2}
               />
+              <div style={{ fontSize:11,color:C.t4,marginTop:7,lineHeight:1.5 }}>
+                Needed to hold your stamps so they're there on your next visit.
+              </div>
             </div>
             <div>
               <label style={{ fontSize:12,fontWeight:600,color:C.t4,display:"block",marginBottom:8 }}>Name (optional)</label>
@@ -2022,6 +2380,24 @@ function CheckInPage() {
                 onBlur={e=>e.target.style.borderColor=C.b2}
               />
             </div>
+            {/* Promotional consent. Unchecking it still earns the stamp -
+                it only stops the offer emails. */}
+            <label style={{ display:"flex",alignItems:"flex-start",gap:11,cursor:"pointer",
+                            background:C.bg3,border:`1px solid ${optIn?C.vi+"44":C.b2}`,borderRadius:12,
+                            padding:"13px 15px",transition:"border-color .15s" }}>
+              <input
+                type="checkbox"
+                checked={optIn}
+                onChange={e=>setOptIn(e.target.checked)}
+                style={{ width:17,height:17,marginTop:1,accentColor:C.vi,flexShrink:0,cursor:"pointer" }}
+              />
+              <span style={{ fontSize:12.5,color:C.t3,lineHeight:1.55 }}>
+                Email me offers and rewards from {bizName}.
+                <span style={{ display:"block",color:C.t4,fontSize:11,marginTop:3 }}>
+                  Optional. Uncheck and you'll still earn stamps — you just won't get offers. Unsubscribe any time.
+                </span>
+              </span>
+            </label>
             {err && <div style={{fontSize:13,color:C.err,background:C.err+"0c",border:`1px solid ${C.err}22`,borderRadius:10,padding:"12px",textAlign:"center",fontWeight:500}}>{err}</div>}
             <button type="submit" disabled={busy} style={{...btnP(),fontSize:15,fontWeight:700,padding:"15px",width:"100%",boxShadow:`0 8px 24px ${C.vi}30`,transition:"all .2s"}}>{busy?"Checking in...":"Check in & earn stamp"}</button>
           </form>
