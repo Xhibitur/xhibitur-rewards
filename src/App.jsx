@@ -39,7 +39,7 @@ function useW() {
 const C = {
   bg:"#000",bg1:"#0a0a0a",bg2:"#111",bg3:"#171717",bg4:"#1c1c1c",
   b1:"#1a1a1a",b2:"#252525",b3:"#333",b4:"#444",
-  t1:"#fff",t2:"#d4d4d4",t3:"#a3a3a3",t4:"#525252",
+  t1:"#fff",t2:"#d4d4d4",t3:"#a3a3a3",t4:"#7a7a7a",
   vi:"#d4a017",viL:"#e8b84b",viD:"#b8860b",viDim:"rgba(212,160,23,0.1)",viGlo:"rgba(212,160,23,0.22)",
   fu:"#f59e0b",cy:"#06b6d4",em:"#10b981",am:"#e07b39",ro:"#f43f5e",bl:"#3b82f6",
   ok:"#22c55e",warn:"#f59e0b",err:"#ef4444",
@@ -47,9 +47,27 @@ const C = {
 
 const PLAN = { name:"Pro", price:49, priceAnn:490, col:C.vi };
 
+// Picks black or white text for a background so the label stays readable.
+// Gold at #d4a017 scores 2.38:1 against white and 8.84:1 against black.
+const fgOn = (bg) => {
+  if (typeof bg !== "string") return "#fff";
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(bg.trim());
+  if (!m) return "#fff";                       // transparent, rgba(), gradients
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map(c=>c+c).join("");
+  const ch = [0,2,4].map(i => {
+    const v = parseInt(h.slice(i,i+2),16)/255;
+    return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  });
+  const L = 0.2126*ch[0] + 0.7152*ch[1] + 0.0722*ch[2];
+  const vsBlack = (L + 0.05) / 0.05;
+  const vsWhite = 1.05 / (L + 0.05);
+  return vsBlack >= vsWhite ? "#000" : "#fff";
+};
+
 const btnP = (color=C.vi, full=false) => ({
   display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,
-  padding:"11px 20px",background:color,color:"#fff",border:"none",
+  padding:"11px 20px",background:color,color:fgOn(color),border:"none",
   borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",
   letterSpacing:"-0.01em",whiteSpace:"nowrap",width:full?"100%":"auto",minHeight:44,
   transition:"opacity .15s",
@@ -406,6 +424,102 @@ const TERMS = [
   { h:"18. Changes", b:"We may update these Terms. Continued use constitutes acceptance." },
   { h:"19. Contact", b:"info@xhibitur.com · Xhibitur LLC · New York, NY" },
 ];
+
+// Full-page versions of the policies so they have real, linkable URLs
+// (#/privacy and #/terms) for email footers, Stripe and app listings.
+function LegalPage({ type }) {
+  const { nav } = useNav();
+  const w=useW(); const mob=w<640;
+  const sections = type==="privacy" ? PRIVACY : TERMS;
+  const title = type==="privacy" ? "Privacy Policy" : "Terms of Use";
+  useEffect(()=>{ document.title = title + " — Xhibitur Rewards"; },[title]);
+  return (
+    <div style={{ minHeight:"100vh",background:C.bg,padding:mob?"28px 18px 60px":"48px 24px 80px" }}>
+      <div style={{ maxWidth:720,margin:"0 auto" }}>
+        <div onClick={()=>nav("home")} style={{ display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:28 }}>
+          <div style={{ width:30,height:30,borderRadius:8,background:C.vi,display:"flex",alignItems:"center",
+                        justifyContent:"center",fontWeight:900,fontSize:16,color:"#000" }}>X</div>
+          <span style={{ fontSize:15,fontWeight:700,color:C.t1 }}>Xhibitur <span style={{color:C.vi}}>Rewards</span></span>
+        </div>
+        <h1 style={{ fontSize:mob?28:34,fontWeight:900,color:C.t1,letterSpacing:"-.03em",marginBottom:6 }}>{title}</h1>
+        <div style={{ fontSize:12,color:C.t4,marginBottom:34 }}>Xhibitur LLC · Effective January 1, 2026</div>
+        {sections.map((s,i)=>(
+          <div key={i} style={{ marginBottom:24 }}>
+            <div style={{ fontSize:13,fontWeight:700,color:C.vi,marginBottom:7 }}>{s.h}</div>
+            <div style={{ fontSize:14,color:C.t3,lineHeight:1.75 }}>{s.b}</div>
+          </div>
+        ))}
+        <div style={{ borderTop:`1px solid ${C.b1}`,marginTop:34,paddingTop:20,display:"flex",gap:18,flexWrap:"wrap" }}>
+          <span onClick={()=>nav(type==="privacy"?"terms":"privacy")} style={{ fontSize:13,color:C.vi,cursor:"pointer",textDecoration:"underline",fontWeight:600 }}>
+            {type==="privacy" ? "Terms of Use" : "Privacy Policy"}
+          </span>
+          <span onClick={()=>nav("home")} style={{ fontSize:13,color:C.t3,cursor:"pointer",textDecoration:"underline" }}>Back to home</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotFound() {
+  const { nav } = useNav();
+  useEffect(()=>{ document.title = "Page not found — Xhibitur Rewards"; },[]);
+  return (
+    <div style={{ minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}>
+      <div style={{ textAlign:"center",maxWidth:400 }}>
+        <div style={{ fontSize:52,fontWeight:900,color:C.vi,letterSpacing:"-.04em",marginBottom:10 }}>404</div>
+        <div style={{ fontSize:19,fontWeight:700,color:C.t1,marginBottom:10 }}>This page doesn't exist</div>
+        <div style={{ fontSize:14,color:C.t3,lineHeight:1.65,marginBottom:26 }}>
+          The link may be mistyped or out of date. If you scanned a QR sticker and landed here, ask the business for a fresh one.
+        </div>
+        <button onClick={()=>nav("home")} style={{ ...btnP(),fontSize:14,padding:"12px 26px" }}>Go to home</button>
+      </div>
+    </div>
+  );
+}
+
+// Consent gate for Google Analytics. index.html loads nothing from Google
+// until accept() is called here, so no cookie is set before a choice.
+function CookieBanner() {
+  const { nav } = useNav();
+  const w=useW(); const mob=w<640;
+  const [show,setShow] = useState(false);
+  useEffect(()=>{
+    const t = setTimeout(()=>{
+      try { if (!window.xbConsent || !window.xbConsent.status) setShow(true); }
+      catch { /* storage blocked: stay hidden */ }
+    }, 700);
+    return ()=>clearTimeout(t);
+  },[]);
+  if (!show) return null;
+  const close = (fn) => { try { window.xbConsent && window.xbConsent[fn](); } catch {} setShow(false); };
+  return (
+    <div role="dialog" aria-label="Cookie choices"
+         style={{ position:"fixed",left:0,right:0,bottom:0,zIndex:900,padding:mob?12:18,
+                  display:"flex",justifyContent:"center",pointerEvents:"none" }}>
+      <div style={{ pointerEvents:"auto",maxWidth:620,width:"100%",background:C.bg2,
+                    border:`1px solid ${C.b3}`,borderRadius:14,padding:mob?"15px 16px":"17px 20px",
+                    boxShadow:"0 20px 60px rgba(0,0,0,.75)",display:"flex",gap:14,
+                    alignItems:mob?"stretch":"center",flexDirection:mob?"column":"row" }}>
+        <div style={{ fontSize:13,color:C.t3,lineHeight:1.6,flex:1 }}>
+          We use analytics cookies to see how the site is used. Nothing loads until you choose.{" "}
+          <span onClick={()=>nav("privacy")} style={{ color:C.vi,cursor:"pointer",textDecoration:"underline",fontWeight:600 }}>Privacy Policy</span>
+        </div>
+        <div style={{ display:"flex",gap:9,flexShrink:0 }}>
+          <button onClick={()=>close("decline")}
+            style={{ fontSize:13,fontWeight:700,padding:"10px 16px",background:"transparent",color:C.t2,
+                     border:`1px solid ${C.b3}`,borderRadius:9,cursor:"pointer",flex:mob?1:undefined,minHeight:40 }}>
+            Decline
+          </button>
+          <button onClick={()=>close("accept")}
+            style={{ fontSize:13,fontWeight:800,padding:"10px 18px",background:C.vi,color:"#000",
+                     border:"none",borderRadius:9,cursor:"pointer",flex:mob?1:undefined,minHeight:40 }}>
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function LegalModal({ type, onClose }) {
   const sections = type==="privacy" ? PRIVACY : TERMS;
@@ -2161,6 +2275,7 @@ function CheckInPage() {
   const [bizLogo,setBizLogo]=useState("");
   const [legal,setLegal]=useState(null);
   const [optIn,setOptIn]=useState(true);
+  const [hp,setHp]=useState("");   // honeypot: must stay empty
   
   useEffect(()=>{
     if (!slug) return;
@@ -2225,6 +2340,9 @@ function CheckInPage() {
 
   const handleCheckin = async e => {
     e.preventDefault();
+    // A filled honeypot means a script, not a guest. Fail silently so the
+    // bot sees a normal-looking response and doesn't retune.
+    if (hp) { setStep("success"); return; }
     if (!email) { setErr("Email required"); return; }
     setBusy(true); setErr("");
 
@@ -2319,7 +2437,7 @@ function CheckInPage() {
       {/* Feature Image */}
       {featureImage && (
         <div style={{ width:"100%",maxWidth:420,margin:"0 auto 28px",borderRadius:16,overflow:"hidden",background:C.bg2,border:`1px solid ${C.b2}`,boxShadow:`0 8px 24px ${C.bg4}` }}>
-          <img src={featureImage} style={{width:"100%",height:140,objectFit:"cover"}}/>
+          <img src={featureImage} alt="" style={{width:"100%",height:140,objectFit:"cover"}}/>
         </div>
       )}
 
@@ -2380,6 +2498,9 @@ function CheckInPage() {
                 onBlur={e=>e.target.style.borderColor=C.b2}
               />
             </div>
+            <input type="text" name="company" value={hp} onChange={e=>setHp(e.target.value)}
+                   tabIndex={-1} autoComplete="off" aria-hidden="true"
+                   style={{ position:"absolute",left:"-9999px",width:1,height:1,opacity:0 }}/>
             {/* Promotional consent. Unchecking it still earns the stamp -
                 it only stops the offer emails. */}
             <label style={{ display:"flex",alignItems:"flex-start",gap:11,cursor:"pointer",
@@ -3282,6 +3403,8 @@ function AppCore() {
 
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
+    privacy:<LegalPage type="privacy"/>,
+    terms:<LegalPage type="terms"/>,
     "forgot-password":<ForgotPassword/>,
     "reset-password":<ResetPassword/>,
     dashboard:<DashHome/>,
@@ -3296,7 +3419,7 @@ function AppCore() {
   };
   return (
     <ProgramsCtx.Provider value={programs}>
-      {views[page] || <Landing/>}
+      {views[page] || <NotFound/>}
     </ProgramsCtx.Provider>
   );
 }
@@ -3325,6 +3448,7 @@ export default function App() {
       <RouterProvider>
         <AuthProvider>
           <AppCore/>
+          <CookieBanner/>
         </AuthProvider>
       </RouterProvider>
     </ErrorBoundary>
