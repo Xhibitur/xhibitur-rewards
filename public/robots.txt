@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Netlify function endpoints are not pages.
+Disallow: /.netlify/
+
+Sitemap: https://rewards.xhibitur.com/sitemap.xml
