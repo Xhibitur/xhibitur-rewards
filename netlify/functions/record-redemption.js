@@ -36,7 +36,7 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body); } catch { return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid JSON" }) }; }
 
-  const { slug, reward } = body;
+  const { slug, reward, businessName, goal, rewardName, optIn } = body;
   if (!slug) return { statusCode: 400, headers, body: JSON.stringify({ error: "slug required" }) };
 
   const email = (body.email || "").trim().toLowerCase();
@@ -103,6 +103,37 @@ exports.handler = async (event) => {
       const errText = await res.text();
       console.error("record-redemption insert failed:", errText);
       return { statusCode: 500, headers, body: JSON.stringify({ error: errText }) };
+    }
+
+    // ---- Make every check-in a win-back-eligible member -------------------
+    // Previously a member row was only created if the guest tapped the optional
+    // "save with email" step, so most people who gave an email were invisible to
+    // the win-back worker. One upsert here fixes that. winback_sent_at is
+    // deliberately not touched, so returns stay attributable.
+    if (!isScan && email) {
+      try {
+        const member = {
+          email,
+          business_slug: slug,
+          last_visit: new Date().toISOString(),
+        };
+        if (businessName) member.business_name = businessName;
+        if (Number(goal) > 0) member.goal = Number(goal);
+        if (rewardName) member.reward = rewardName;
+        if (typeof optIn === "boolean") member.email_opt_in = optIn;
+
+        const up = await fetch(
+          `${SUPABASE_URL}/rest/v1/loyalty_members?on_conflict=email,business_slug`,
+          {
+            method: "POST",
+            headers: { ...sbHeaders, Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify(member),
+          }
+        );
+        if (!up.ok) console.error("member upsert failed:", up.status, await up.text());
+      } catch (e) {
+        console.error("member upsert error:", e.message);
+      }
     }
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
