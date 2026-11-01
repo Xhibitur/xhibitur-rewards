@@ -247,16 +247,79 @@ function Empty({ icon, title, body, cta }) {
 
 const ADMIN_EMAIL = "info@xhibitur.com";
 
-const TABS = [
-  { id:"dashboard",           icon:"⊞", label:"Home"      },
-  { id:"dashboard/qr",        icon:"▦",  label:"QR"        },
-  { id:"dashboard/rewards",   icon:"◆",  label:"Rewards"   },
-  { id:"dashboard/analytics", icon:"◈",  label:"Analytics" },
-  { id:"dashboard/stickers",  icon:"🏷", label:"Stickers"  },
-  { id:"dashboard/account",   icon:"◉",  label:"Account"   },
-  { id:"dashboard/broadcast", icon:"📣", label:"Broadcast" },
-  { id:"dashboard/mystery",   icon:"🎁", label:"Mystery Box" },
+// One stroke-icon family. Emoji can't take the active colour and render
+// differently on every device, so none are used in navigation.
+const ICON_PATHS = {
+  home:      <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>,
+  customers: <><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.9M18.5 14.9c1.6.8 2.5 2.4 2.5 4.6"/></>,
+  rewards:   <path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>,
+  campaigns: <><path d="M3.5 9.5v5a1 1 0 0 0 1 1H8l5.5 4V4.5L8 8.5H4.5a1 1 0 0 0-1 1z"/><path d="M17.5 9a4 4 0 0 1 0 6"/><path d="M20 6.5a7.5 7.5 0 0 1 0 11"/></>,
+  more:      <><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></>,
+  qr:        <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17.5h3.5M17.5 14v7M21 14v.01M21 21v.01"/></>,
+  sticker:   <><path d="M20.6 13.4 12.4 21.6a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1-.6-1.4V4a2 2 0 0 1 2-2h9a2 2 0 0 1 1.4.6l6.4 6.4a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/></>,
+  account:   <><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6"/></>,
+  admin:     <><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4.5" y="11" width="15" height="9.5" rx="2"/></>,
+  gift:      <path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>,
+  chevron:   <path d="m9 6 6 6-6 6"/>,
+};
+
+function Ico({ name, size=22, filled=false, sw=1.75 }) {
+  const p = ICON_PATHS[name]; if (!p) return null;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true"
+         fill={filled?"currentColor":"none"} fillOpacity={filled?0.22:undefined}
+         stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+         style={{ display:"block",flexShrink:0 }}>
+      {p}
+    </svg>
+  );
+}
+
+// Five destinations, ordered by how often an owner actually opens them.
+// `match` lists every route that should light this tab up, so Rewards stays
+// lit on the QR screen and Campaigns on both Broadcast and Mystery Box.
+const NAV = [
+  { id:"dashboard",           icon:"home",      label:"Home",      match:["dashboard"] },
+  { id:"dashboard/analytics", icon:"customers", label:"Customers", match:["dashboard/analytics","dashboard/customers"] },
+  { id:"dashboard/rewards",   icon:"rewards",   label:"Rewards",   match:["dashboard/rewards","dashboard/qr"] },
+  { id:"dashboard/broadcast", icon:"campaigns", label:"Campaigns", match:["dashboard/broadcast","dashboard/mystery"] },
 ];
+
+// Everything set up once and then forgotten lives behind More.
+const MORE_ITEMS = [
+  { id:"dashboard/stickers", icon:"sticker", label:"Order stickers",    sub:"Co-branded vinyl for your counter" },
+  { id:"dashboard/account",  icon:"account", label:"Account & billing", sub:"Profile, plan, payment method" },
+];
+const MORE_IDS = MORE_ITEMS.map(m=>m.id).concat("dashboard/admin");
+const moreFor = email => email===ADMIN_EMAIL
+  ? [...MORE_ITEMS, { id:"dashboard/admin", icon:"admin", label:"Admin", sub:"Only visible on your account" }]
+  : MORE_ITEMS;
+
+// Routes are flat, so an exact match is right and avoids Home lighting up everywhere.
+const navActive = (t, page) => t.match.includes(page);
+
+// Two-up switcher used where one section holds two screens.
+function Segments({ items }) {
+  const { page,nav } = useNav();
+  return (
+    <div role="tablist" style={{ display:"grid",gridTemplateColumns:`repeat(${items.length},minmax(0,1fr))`,
+                gap:4,background:C.bg2,border:`1px solid ${C.b2}`,borderRadius:11,padding:4,marginBottom:18 }}>
+      {items.map(it=>{
+        const on = page===it.to;
+        return (
+          <button key={it.to} type="button" role="tab" aria-selected={on} onClick={()=>!on&&nav(it.to)}
+            style={{ minHeight:44,border:"none",borderRadius:8,cursor:on?"default":"pointer",
+                     background:on?C.vi:"transparent",color:on?"#000":C.t3,
+                     fontSize:13,fontWeight:on?800:600,fontFamily:"inherit",letterSpacing:"-0.01em" }}>
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+const RewardSegs   = () => <Segments items={[{label:"Programs",to:"dashboard/rewards"},{label:"QR codes",to:"dashboard/qr"}]}/>;
+const CampaignSegs = () => <Segments items={[{label:"Broadcast",to:"dashboard/broadcast"},{label:"Mystery Box",to:"dashboard/mystery"}]}/>;
 
 function TopNav() {
   const { user } = useAuth(); const { nav } = useNav(); const w=useW(); const mob=w<768;
@@ -272,44 +335,117 @@ function TopNav() {
   );
 }
 
-function BottomTabs() {
-  const { user } = useAuth();
-  const { page,nav } = useNav();
-  const tabs = [...TABS, ...(user?.email===ADMIN_EMAIL?[{ id:"dashboard/admin", icon:"🔧", label:"Admin" }]:[])];
+function MoreSheet({ onClose }) {
+  const { user,signOut } = useAuth(); const { page,nav } = useNav();
+  const items = moreFor(user?.email);
+  const go = id => { nav(id); onClose(); };
   return (
-    <nav style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:300,background:C.bg1,borderTop:`1px solid ${C.b1}`,display:"flex",paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
-      {tabs.map(t => {
-        const active = page===t.id||(t.id!=="dashboard"&&page.startsWith(t.id));
-        return (
-          <button key={t.id} onClick={()=>nav(t.id)} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"10px 2px 9px",background:"none",border:"none",cursor:"pointer",color:active?C.vi:C.t4,minHeight:56,position:"relative" }}>
-            {active && <span style={{ position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:28,height:2,background:C.vi,borderRadius:"0 0 3px 3px" }}/>}
-            <span style={{ fontSize:17 }}>{t.icon}</span>
-            <span style={{ fontSize:9,fontWeight:active?700:500 }}>{t.label}</span>
-          </button>
-        );
-      })}
-    </nav>
+    <>
+      <div onClick={onClose} style={{ position:"fixed",inset:0,zIndex:310,background:"rgba(0,0,0,.6)",backdropFilter:"blur(3px)" }}/>
+      <div role="dialog" aria-label="More"
+           style={{ position:"fixed",left:0,right:0,bottom:0,zIndex:320,background:C.bg2,
+                    borderTop:`1px solid ${C.b3}`,borderRadius:"20px 20px 0 0",
+                    padding:`10px 16px calc(20px + env(safe-area-inset-bottom,0px))`,
+                    boxShadow:"0 -24px 60px rgba(0,0,0,.85)",animation:"sheetUp .25s ease" }}>
+        <div style={{ width:38,height:4,background:C.b4,borderRadius:4,margin:"0 auto 16px" }}/>
+        {items.map(m=>{
+          const on = page===m.id;
+          return (
+            <button key={m.id} onClick={()=>go(m.id)}
+              style={{ width:"100%",display:"flex",alignItems:"center",gap:13,padding:"13px 12px",marginBottom:8,
+                       minHeight:52,borderRadius:11,cursor:"pointer",textAlign:"left",fontFamily:"inherit",
+                       background:C.bg3,border:`1px solid ${on?C.vi+"55":C.b2}`,color:on?C.vi:C.t3 }}>
+              <Ico name={m.icon} size={20}/>
+              <span style={{ flex:1,minWidth:0 }}>
+                <span style={{ display:"block",fontSize:14,fontWeight:600,color:C.t1 }}>{m.label}</span>
+                <span style={{ display:"block",fontSize:11,color:C.t3,marginTop:1 }}>{m.sub}</span>
+              </span>
+              <span style={{ color:C.t4 }}><Ico name="chevron" size={16} sw={2}/></span>
+            </button>
+          );
+        })}
+        <button onClick={()=>{signOut();nav("home");onClose();}}
+          style={{ width:"100%",minHeight:48,marginTop:12,borderRadius:11,cursor:"pointer",fontFamily:"inherit",
+                   background:"transparent",border:`1px solid ${C.b3}`,color:C.t3,fontSize:13,fontWeight:600 }}>
+          Sign out
+        </button>
+      </div>
+    </>
+  );
+}
+
+function BottomTabs() {
+  const { page,nav } = useNav();
+  const [more,setMore] = useState(false);
+  const moreOn = MORE_IDS.includes(page);
+  const tab = (key, on, icon, label, onClick, current) => (
+    <button key={key} onClick={onClick} aria-current={current?"page":undefined}
+      style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,
+               minHeight:52,padding:"9px 0 7px",background:"none",border:"none",cursor:"pointer",
+               color:on?C.vi:C.t3,position:"relative",fontFamily:"inherit" }}>
+      {on && <span style={{ position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:26,height:2,background:C.vi,borderRadius:"0 0 2px 2px" }}/>}
+      <Ico name={icon} filled={on}/>
+      <span style={{ fontSize:10,fontWeight:on?700:600,letterSpacing:"-0.01em" }}>{label}</span>
+    </button>
+  );
+  return (
+    <>
+      {more && <MoreSheet onClose={()=>setMore(false)}/>}
+      <nav aria-label="Main" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:300,background:C.bg1,
+                  borderTop:`1px solid ${C.b1}`,display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",
+                  paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
+        {NAV.map(t=>{
+          const on = navActive(t,page);
+          return tab(t.id, on, t.icon, t.label, ()=>nav(t.id), on);
+        })}
+        {tab("more", moreOn||more, "more", "More", ()=>setMore(v=>!v), moreOn)}
+      </nav>
+    </>
   );
 }
 
 function Sidebar() {
   const { user,signOut } = useAuth(); const { page,nav } = useNav();
   const isTrial = user?.plan==="trial";
-  const tabs = [...TABS, ...(user?.email===ADMIN_EMAIL?[{ id:"dashboard/admin", icon:"🔧", label:"Admin" }]:[])];
+  // Desktop has the vertical room, so the groups are shown open rather than
+  // collapsed behind segments.
+  const groups = [
+    { label:null, items:[
+      { id:"dashboard",           icon:"home",      label:"Home" },
+      { id:"dashboard/analytics", icon:"customers", label:"Customers" },
+    ]},
+    { label:"Rewards", items:[
+      { id:"dashboard/rewards", icon:"rewards", label:"Programs" },
+      { id:"dashboard/qr",      icon:"qr",      label:"QR codes" },
+    ]},
+    { label:"Campaigns", items:[
+      { id:"dashboard/broadcast", icon:"campaigns", label:"Broadcast" },
+      { id:"dashboard/mystery",   icon:"gift",      label:"Mystery Box" },
+    ]},
+    { label:"Settings", items:moreFor(user?.email) },
+  ];
   return (
     <aside style={{ width:216,background:C.bg1,borderRight:`1px solid ${C.b1}`,display:"flex",flexDirection:"column",padding:"20px 0",flexShrink:0,minHeight:"100%" }}>
       <div style={{ padding:"0 16px 24px",cursor:"pointer" }} onClick={()=>nav("home")}><Wordmark sm/></div>
       <nav style={{ flex:1,padding:"0 8px" }}>
-        {tabs.map(t => {
-          const active = page===t.id||(t.id!=="dashboard"&&page.startsWith(t.id));
-          return (
-            <div key={t.id} onClick={()=>nav(t.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,marginBottom:2,cursor:"pointer",background:active?C.viDim:"transparent",color:active?C.vi:C.t4,fontSize:13,fontWeight:active?600:400,borderLeft:`2px solid ${active?C.vi:"transparent"}`,transition:"all .12s" }}
-              onMouseEnter={e=>{ if(!active){e.currentTarget.style.background=C.bg3;e.currentTarget.style.color=C.t2;} }}
-              onMouseLeave={e=>{ if(!active){e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.t4;} }}>
-              <span style={{ fontSize:15 }}>{t.icon}</span>{t.label}
-            </div>
-          );
-        })}
+        {groups.map((g,gi)=>(
+          <div key={g.label||gi} style={{ marginBottom:gi<groups.length-1?14:0 }}>
+            {g.label && (
+              <div style={{ fontSize:9.5,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",
+                            color:C.t4,padding:"0 12px 6px" }}>{g.label}</div>
+            )}
+            {g.items.map(t=>{
+              const active = page===t.id;
+              return (
+                <div key={t.id} onClick={()=>nav(t.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,marginBottom:2,cursor:"pointer",background:active?C.viDim:"transparent",color:active?C.vi:C.t3,fontSize:13,fontWeight:active?600:400,transition:"all .12s" }}
+                  onMouseEnter={e=>{ if(!active){e.currentTarget.style.background=C.bg3;e.currentTarget.style.color=C.t2;} }}
+                  onMouseLeave={e=>{ if(!active){e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.t3;} }}>
+                  <Ico name={t.icon} size={16} filled={active}/>{t.label}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div style={{ padding:"14px 10px 8px",borderTop:`1px solid ${C.b1}` }}>
         <div style={{ ...card(true),padding:"12px",marginBottom:12 }}>
@@ -1232,15 +1368,15 @@ function DashHome() {
         <div style={{ fontSize:13,fontWeight:700,color:C.t2,marginBottom:14 }}>Quick actions</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
           {[
-            { icon:"▦",lbl:"New Smart QR",   desc:"Dynamic routing",  to:"dashboard/qr",        col:C.vi },
-            { icon:"◆",lbl:"New Rewards",    desc:"Points & stamps",   to:"dashboard/rewards",   col:C.fu },
-            { icon:"◈",lbl:"Analytics",      desc:"Scans & data",      to:"dashboard/analytics", col:C.em },
-            { icon:"🏷",lbl:"Order Stickers", desc:"Co-branded vinyl",  to:"dashboard/stickers",  col:C.am },
+            { icon:"qr",        lbl:"New Smart QR",   desc:"Dynamic routing",     to:"dashboard/qr",        col:C.vi },
+            { icon:"rewards",   lbl:"New Rewards",    desc:"Points & stamps",     to:"dashboard/rewards",   col:C.fu },
+            { icon:"customers", lbl:"Customers",      desc:"Who's slipping away", to:"dashboard/analytics", col:C.em },
+            { icon:"sticker",   lbl:"Order Stickers", desc:"Co-branded vinyl",    to:"dashboard/stickers",  col:C.am },
           ].map(a=>(
             <div key={a.to} onClick={()=>nav(a.to)} style={{ display:"flex",alignItems:"flex-start",gap:10,padding:mob?12:14,background:C.bg3,border:`1px solid ${C.b1}`,borderRadius:10,cursor:"pointer",borderLeft:`2px solid ${a.col}`,minHeight:56,transition:"background .12s" }}
               onMouseEnter={e=>e.currentTarget.style.background=a.col+"10"}
               onMouseLeave={e=>e.currentTarget.style.background=C.bg3}>
-              <span style={{ fontSize:18,color:a.col }}>{a.icon}</span>
+              <span style={{ color:a.col,marginTop:1 }}><Ico name={a.icon} size={18}/></span>
               <div><div style={{ fontSize:mob?12:13,fontWeight:600,color:C.t1 }}>{a.lbl}</div><div style={{ fontSize:11,color:C.t4 }}>{a.desc}</div></div>
             </div>
           ))}
@@ -1641,8 +1777,9 @@ function QRPage() {
 
   return (
     <DashShell>
-      <PgHead title="Smart QR Codes" sub="Route every scan to the right destination."
+      <PgHead title="Rewards" sub="What customers earn, and the codes that start it."
         action={<button onClick={()=>setModal(true)} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New QR</button>}/>
+      <RewardSegs/>
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {loading
           ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div>
@@ -1797,8 +1934,9 @@ function RewardsPage({ programs, setPrograms }) {
 
   return (
     <DashShell>
-      <PgHead title="Rewards Programs" sub="Build loyalty and bring customers back."
+      <PgHead title="Rewards" sub="What customers earn, and the codes that start it."
         action={<button onClick={()=>setModal(true)} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New Program</button>}/>
+      <RewardSegs/>
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {loading
           ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div>
@@ -1907,7 +2045,7 @@ function AnalyticsPage() {
 
   return (
     <DashShell>
-      <PgHead title="Analytics" sub="Who's coming back, who's slipping away, and what the win-back recovered."/>
+      <PgHead title="Customers" sub="Who's coming back, who's slipping away, and what the win-back recovered."/>
 
       {/* ---- Recovered revenue ---- */}
       <div style={{ ...card(),padding:mob?18:24,marginBottom:14,border:`1px solid ${C.vi}33`,
@@ -2710,7 +2848,8 @@ function BroadcastPage() {
   };
   return (
     <DashShell>
-      <PgHead title="Message Members" sub="Send an email broadcast to all your loyalty members."/>
+      <PgHead title="Campaigns" sub="Reach the customers you already have."/>
+      <CampaignSegs/>
       <div style={{ maxWidth:mob?undefined:580 }}>
         <div style={{ ...card(),padding:mob?14:18,marginBottom:16,border:`1px solid ${C.vi}25`,background:C.viDim }}>
           <div style={{ fontWeight:700,fontSize:14,color:C.t1,marginBottom:6 }}>📣 How this works</div>
@@ -3234,8 +3373,9 @@ function MysteryPage() {
 
   return (
     <DashShell>
-      <PgHead title="Mystery Box" sub="A free-to-play giveaway. Scan, pick a box, win a prize."
+      <PgHead title="Campaigns" sub="Reach the customers you already have."
         action={<button onClick={blank} style={{ ...btnP(),fontSize:13,padding:"10px 18px" }}>+ New giveaway</button>}/>
+      <CampaignSegs/>
 
       {loading ? <div style={{ textAlign:"center",padding:"40px 0",color:C.t4 }}>Loading…</div> : (
         <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
@@ -3401,6 +3541,7 @@ function AppCore() {
 
   if (page.toLowerCase().startsWith("play/")) return <MysteryBoxPage/>;
 
+  // Old bookmarks keep working: every pre-redesign route still resolves.
   const views = {
     home:<Landing/>, login:<Login/>, signup:<Signup/>, pricing:<PricingPage/>,
     privacy:<LegalPage type="privacy"/>,
@@ -3411,6 +3552,7 @@ function AppCore() {
     "dashboard/qr":<QRPage/>,
     "dashboard/rewards":<RewardsPage programs={programs} setPrograms={setPrograms}/>,
     "dashboard/analytics":<AnalyticsPage/>,
+    "dashboard/customers":<AnalyticsPage/>,
     "dashboard/account":<AccountPage/>,
     "dashboard/stickers":<StickerOrderPage/>,
     "dashboard/broadcast":<BroadcastPage/>,
